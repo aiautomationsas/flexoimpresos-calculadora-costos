@@ -27,7 +27,7 @@ def show_manage_values():
         Aquí puede visualizar y modificar los valores para cada combinación de material y adhesivo.
         Para modificar un valor, seleccione la combinación y establezca el nuevo precio.
         
-        **💡 Nota:** Los valores se pueden ingresar como números enteros (ej: 1500) y automáticamente se formatearán con dos decimales (ej: 1500.00).
+        **💡 Nota:** Los valores se redondearán automáticamente a 2 decimales (ej: 1500.00).
         """)
         
         # Cargar datos
@@ -76,23 +76,22 @@ def show_manage_values():
                     st.write("**Nuevo valor ($/m²):**")
                     nuevo_valor_input = st.text_input(
                         "Nuevo valor",
-                        value=str(int(valor_actual)),
+                        value=f"{valor_actual:.2f}",
                         key="new_value_mat_adh_input",
-                        help="Ingrese el nuevo valor en pesos por metro cuadrado"
+                        help="Ingrese el nuevo valor en pesos por metro cuadrado (ej: 1500.00)"
                     )
                     
                     # Convertir y validar el valor ingresado
                     try:
                         if nuevo_valor_input:
                             nuevo_valor = float(nuevo_valor_input)
-                            # Formatear el valor con 2 decimales si es entero
-                            if nuevo_valor.is_integer():
-                                nuevo_valor = round(nuevo_valor, 2)
+                            # Redondear siempre a 2 decimales
+                            nuevo_valor = round(nuevo_valor, 2)
                         else:
-                            nuevo_valor = float(valor_actual)
+                            nuevo_valor = round(float(valor_actual), 2)
                     except ValueError:
                         st.error("Por favor ingrese un valor numérico válido")
-                        nuevo_valor = float(valor_actual)
+                        nuevo_valor = round(float(valor_actual), 2)
                     
                     # Botón para actualizar
                     if st.button("Actualizar valor", key="update_mat_adh_btn"):
@@ -120,7 +119,7 @@ def show_manage_values():
         Aquí puede visualizar y modificar los valores para cada tipo de acabado.
         Para modificar un valor, seleccione el acabado y establezca el nuevo precio.
         
-        **💡 Nota:** Los valores se pueden ingresar como números enteros (ej: 1500) y automáticamente se formatearán con dos decimales (ej: 1500.00).
+        **💡 Nota:** Los valores se redondearán automáticamente a 2 decimales (ej: 1500.00).
         """)
         
         # Cargar datos
@@ -166,23 +165,22 @@ def show_manage_values():
                         st.write("**Nuevo valor ($/m²):**")
                         nuevo_valor_input = st.text_input(
                             "Nuevo valor",
-                            value=str(int(acabado.valor)),
+                            value=f"{float(acabado.valor):.2f}",
                             key="new_value_acabado_input",
-                            help="Ingrese el nuevo valor en pesos por metro cuadrado"
+                            help="Ingrese el nuevo valor en pesos por metro cuadrado (ej: 1500.00)"
                         )
                         
                         # Convertir y validar el valor ingresado
                         try:
                             if nuevo_valor_input:
                                 nuevo_valor = float(nuevo_valor_input)
-                                # Formatear el valor con 2 decimales si es entero
-                                if nuevo_valor.is_integer():
-                                    nuevo_valor = round(nuevo_valor, 2)
+                                # Redondear siempre a 2 decimales
+                                nuevo_valor = round(nuevo_valor, 2)
                             else:
-                                nuevo_valor = float(acabado.valor)
+                                nuevo_valor = round(float(acabado.valor), 2)
                         except ValueError:
                             st.error("Por favor ingrese un valor numérico válido")
-                            nuevo_valor = float(acabado.valor)
+                            nuevo_valor = round(float(acabado.valor), 2)
                         
                         # Botón para actualizar
                         if st.button("Actualizar valor", key="update_acabado_btn"):

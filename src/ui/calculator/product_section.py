@@ -69,9 +69,9 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
         
         ancho_text = st.text_input(
             "Ancho",
-            value=str(default_ancho),
+            value=f"{default_ancho:.2f}",
             key="ancho_input",
-            help="Ingrese el ancho en mm (ej: 72.5)"
+            help="Ingrese el ancho en mm (ej: 72.50)"
         )
         
         # Validar y convertir el valor del input
@@ -80,22 +80,25 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
                 ancho_float = float(ancho_text)
                 if ancho_float < 1.0 or ancho_float > 310.0:
                     st.error("El ancho debe estar entre 1.0 y 310.0 mm")
-                    ancho_float = float(default_ancho)
+                    ancho_float = round(float(default_ancho), 2)
+                else:
+                    # Redondear a 2 decimales
+                    ancho_float = round(ancho_float, 2)
                 st.session_state['ancho'] = ancho_float
             else:
-                st.session_state['ancho'] = float(default_ancho)
+                st.session_state['ancho'] = round(float(default_ancho), 2)
         except ValueError:
             st.error("Por favor ingrese un valor numérico válido para el ancho")
-            st.session_state['ancho'] = float(default_ancho)
+            st.session_state['ancho'] = round(float(default_ancho), 2)
         
         # Input de avance usando st.text_input para mejor compatibilidad en Streamlit Cloud
         st.write("**Avance (mm)**")
         
         avance_text = st.text_input(
             "Avance",
-            value=str(default_avance),
+            value=f"{default_avance:.2f}",
             key="avance_input",
-            help="Ingrese el avance en mm (ej: 72.5)"
+            help="Ingrese el avance en mm (ej: 72.50)"
         )
         
         # Validar y convertir el valor del input
@@ -104,13 +107,16 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
                 avance_float = float(avance_text)
                 if avance_float < 1.0 or avance_float > 523.87:
                     st.error("El avance debe estar entre 1.0 y 523.87 mm")
-                    avance_float = float(default_avance)
+                    avance_float = round(float(default_avance), 2)
+                else:
+                    # Redondear a 2 decimales
+                    avance_float = round(avance_float, 2)
                 st.session_state['avance'] = avance_float
             else:
-                st.session_state['avance'] = float(default_avance)
+                st.session_state['avance'] = round(float(default_avance), 2)
         except ValueError:
             st.error("Por favor ingrese un valor numérico válido para el avance")
-            st.session_state['avance'] = float(default_avance)
+            st.session_state['avance'] = round(float(default_avance), 2)
     with col2:
         # --- Pistas ---
         usuario_rol = st.session_state.get('usuario_rol', '')
@@ -362,7 +368,7 @@ def _mostrar_grafado_altura(es_manga: bool, tipos_grafado: List[Any], datos_carg
     # Regla de Fundas Transparentes (0 tintas): deshabilitar grafado si ancho efectivo > 325mm
     try:
         es_funda_transparente = es_manga and int(st.session_state.get('num_tintas', 0)) == 0
-        ancho_cerrado_ft = float(st.session_state.get('ancho', 0) or 0)
+        ancho_cerrado_ft = round(float(st.session_state.get('ancho', 0) or 0), 2)
         ancho_efectivo_ft = (ancho_cerrado_ft * 2) + 6 if es_funda_transparente else 0
         disable_grafado = es_funda_transparente and ancho_efectivo_ft > 325
         if disable_grafado:
@@ -410,7 +416,7 @@ def _mostrar_grafado_altura(es_manga: bool, tipos_grafado: List[Any], datos_carg
         # Determinar valor a mostrar y establecer en session_state si no existe
         if 'altura_grafado' not in st.session_state:
             if datos_cargados and 'altura_grafado' in datos_cargados and datos_cargados['altura_grafado'] is not None:
-                st.session_state['altura_grafado'] = float(datos_cargados['altura_grafado'])
+                st.session_state['altura_grafado'] = round(float(datos_cargados['altura_grafado']), 2)
             else:
                 st.session_state['altura_grafado'] = 0.0
             
@@ -432,7 +438,7 @@ def _mostrar_grafado_altura(es_manga: bool, tipos_grafado: List[Any], datos_carg
     # - Si ancho efectivo > 325mm, no permitir grafado (forzar 'Sin grafado')
     try:
         if es_manga and int(st.session_state.get('num_tintas', 0)) == 0:
-            ancho_cerrado = float(st.session_state.get('ancho', 0) or 0)
+            ancho_cerrado = round(float(st.session_state.get('ancho', 0) or 0), 2)
             ancho_efectivo = (ancho_cerrado * 2) + 6
             if ancho_efectivo > 325:
                 # Forzar grafado 'Sin grafado' si el seleccionado no es 1
@@ -579,7 +585,7 @@ def _mostrar_opciones_adicionales(es_manga: bool, datos_cargados: Optional[Dict]
         if st.session_state.get("tiene_troquel") == "Sí":
             avance_actual = st.session_state.get("avance")
             try:
-                avance_float = float(avance_actual) if avance_actual is not None else 0.0
+                avance_float = round(float(avance_actual), 2) if avance_actual is not None else 0.0
             except Exception:
                 avance_float = 0.0
             if avance_float <= 0:

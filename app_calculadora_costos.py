@@ -733,7 +733,7 @@ def get_filtered_clients():
     # Siempre mostrar todos los clientes independientemente del rol
     return st.session_state.db.get_clientes()
 
-def _mostrar_ajustes_admin():
+def _mostrar_ajustes_admin(datos_cargados: Optional[Dict] = None):
     """Muestra la sección de ajustes avanzados para administradores (fuera del form)."""
     if st.session_state.usuario_rol == 'administrador':
         with st.expander("⚙️ Ajustes Avanzados (Admin)"):
@@ -742,65 +742,183 @@ def _mostrar_ajustes_admin():
             
             # Rentabilidad
             st.divider()
+            
+            # Determinar si hay ajustes de rentabilidad activos
+            # Usar el valor que ya está cargado en session_state
+            rentabilidad_ajustada_existe = st.session_state.get('ajustar_rentabilidad', False)
+            
             ajustar_rentabilidad_checked = st.checkbox("Ajustar Rentabilidad", key='ajustar_rentabilidad')
             if ajustar_rentabilidad_checked:
-                valor_rentabilidad = st.number_input(
-                    "Nueva Rentabilidad (%)", 
-                    key='rentabilidad_ajustada',
-                    min_value=0.1, 
-                    max_value=100.0, 
-                    step=0.1, 
-                    format="%.1f"
+                # Obtener valor inicial desde session_state o usar valor por defecto
+                # Verificar si datos_cargados no es None antes de acceder a sus propiedades
+                if datos_cargados is not None:
+                    valor_por_defecto = RENTABILIDAD_ETIQUETAS if not datos_cargados.get('es_manga', False) else RENTABILIDAD_MANGAS
+                else:
+                    # Si no hay datos cargados, usar el valor por defecto según el tipo de producto actual
+                    es_manga_actual = st.session_state.get('es_manga', False)
+                    valor_por_defecto = RENTABILIDAD_MANGAS if es_manga_actual else RENTABILIDAD_ETIQUETAS
+                valor_inicial_rentabilidad = str(st.session_state.get('rentabilidad_ajustada', valor_por_defecto))
+                
+                rentabilidad_text = st.text_input(
+                    "Nueva Rentabilidad (%)",
+                    value=valor_inicial_rentabilidad,
+                    key='rentabilidad_ajustada_input',
+                    help="Ingrese el porcentaje de rentabilidad (ej: 45.5)"
                 )
-                st.caption(f"Valor configurado: {valor_rentabilidad}%")
+                
+                # Validar y convertir el valor del input
+                try:
+                    if rentabilidad_text and rentabilidad_text.strip():
+                        valor_rentabilidad = float(rentabilidad_text)
+                        if valor_rentabilidad < 0.1 or valor_rentabilidad > 100.0:
+                            st.error("La rentabilidad debe estar entre 0.1% y 100.0%")
+                            # Determinar valor por defecto
+                            if datos_cargados is not None:
+                                valor_por_defecto = RENTABILIDAD_ETIQUETAS if not datos_cargados.get('es_manga', False) else RENTABILIDAD_MANGAS
+                            else:
+                                es_manga_actual = st.session_state.get('es_manga', False)
+                                valor_por_defecto = RENTABILIDAD_MANGAS if es_manga_actual else RENTABILIDAD_ETIQUETAS
+                            valor_rentabilidad = valor_por_defecto
+                        st.session_state['rentabilidad_ajustada'] = valor_rentabilidad
+                    else:
+                        # Determinar valor por defecto
+                        if datos_cargados is not None:
+                            valor_por_defecto = RENTABILIDAD_ETIQUETAS if not datos_cargados.get('es_manga', False) else RENTABILIDAD_MANGAS
+                        else:
+                            es_manga_actual = st.session_state.get('es_manga', False)
+                            valor_por_defecto = RENTABILIDAD_MANGAS if es_manga_actual else RENTABILIDAD_ETIQUETAS
+                        st.session_state['rentabilidad_ajustada'] = valor_por_defecto
+                except ValueError:
+                    st.error("Por favor ingrese un valor numérico válido para la rentabilidad")
+                    # Determinar valor por defecto
+                    if datos_cargados is not None:
+                        valor_por_defecto = RENTABILIDAD_ETIQUETAS if not datos_cargados.get('es_manga', False) else RENTABILIDAD_MANGAS
+                    else:
+                        es_manga_actual = st.session_state.get('es_manga', False)
+                        valor_por_defecto = RENTABILIDAD_MANGAS if es_manga_actual else RENTABILIDAD_ETIQUETAS
+                    st.session_state['rentabilidad_ajustada'] = valor_por_defecto
+                
+                # Determinar valor por defecto para el caption
+                if datos_cargados is not None:
+                    valor_por_defecto = RENTABILIDAD_ETIQUETAS if not datos_cargados.get('es_manga', False) else RENTABILIDAD_MANGAS
+                else:
+                    es_manga_actual = st.session_state.get('es_manga', False)
+                    valor_por_defecto = RENTABILIDAD_MANGAS if es_manga_actual else RENTABILIDAD_ETIQUETAS
+                st.caption(f"Valor configurado: {st.session_state.get('rentabilidad_ajustada', valor_por_defecto)}%")
             else: 
                 if 'rentabilidad_ajustada' in st.session_state:
                     st.session_state.rentabilidad_ajustada = None
             
             # Material
             st.divider()
+            
+            # Determinar si hay ajustes de material activos
+            # Usar el valor que ya está cargado en session_state
+            material_ajustado_existe = st.session_state.get('ajustar_material', False)
+            
             ajustar_material_checked = st.checkbox("Ajustar Material", key='ajustar_material')
             if ajustar_material_checked:
-                valor_material = st.number_input(
-                    "Nuevo Valor Material ($/m²)", 
-                    key='valor_material_ajustado', 
-                    min_value=0.0, 
-                    step=1.0, 
-                    format="%.2f"
+                # Obtener valor inicial desde session_state o usar valor por defecto
+                valor_inicial_material = str(st.session_state.get('valor_material_ajustado', 0.0))
+                
+                material_text = st.text_input(
+                    "Nuevo Valor Material ($/m²)",
+                    value=valor_inicial_material,
+                    key='valor_material_ajustado_input',
+                    help="Ingrese el valor del material por metro cuadrado (ej: 1500.50)"
                 )
-                st.caption(f"Valor configurado: ${valor_material}/m²")
+                
+                # Validar y convertir el valor del input
+                try:
+                    if material_text and material_text.strip():
+                        valor_material = float(material_text)
+                        if valor_material < 0.0:
+                            st.error("El valor del material debe ser mayor o igual a 0")
+                            valor_material = 0.0
+                        st.session_state['valor_material_ajustado'] = valor_material
+                    else:
+                        st.session_state['valor_material_ajustado'] = 0.0
+                except ValueError:
+                    st.error("Por favor ingrese un valor numérico válido para el material")
+                    st.session_state['valor_material_ajustado'] = 0.0
+                
+                st.caption(f"Valor configurado: ${st.session_state.get('valor_material_ajustado', 0.0):.2f}/m²")
             else: 
                 if 'valor_material_ajustado' in st.session_state:
                     st.session_state.valor_material_ajustado = 0.0
             
             # Troquel
             st.divider()
+            
+            # Determinar si hay ajustes de troquel activos
+            # Usar el valor que ya está cargado en session_state
+            troquel_ajustado_existe = st.session_state.get('ajustar_troquel', False)
+            
             ajustar_troquel_checked = st.checkbox("Ajustar Troquel", key='ajustar_troquel')
             if ajustar_troquel_checked:
-                valor_troquel = st.number_input(
-                    "Nuevo Precio Troquel ($)", 
-                    key='precio_troquel', 
-                    min_value=0.0, 
-                    step=1.0, 
-                    format="%.2f"
+                # Obtener valor inicial desde session_state o usar valor por defecto
+                valor_inicial_troquel = str(st.session_state.get('precio_troquel', 0.0))
+                
+                troquel_text = st.text_input(
+                    "Nuevo Precio Troquel ($)",
+                    value=valor_inicial_troquel,
+                    key='precio_troquel_input',
+                    help="Ingrese el precio del troquel (ej: 2500.00)"
                 )
-                st.caption(f"Valor configurado: ${valor_troquel}")
+                
+                # Validar y convertir el valor del input
+                try:
+                    if troquel_text and troquel_text.strip():
+                        valor_troquel = float(troquel_text)
+                        if valor_troquel < 0.0:
+                            st.error("El precio del troquel debe ser mayor o igual a 0")
+                            valor_troquel = 0.0
+                        st.session_state['precio_troquel'] = valor_troquel
+                    else:
+                        st.session_state['precio_troquel'] = 0.0
+                except ValueError:
+                    st.error("Por favor ingrese un valor numérico válido para el troquel")
+                    st.session_state['precio_troquel'] = 0.0
+                
+                st.caption(f"Valor configurado: ${st.session_state.get('precio_troquel', 0.0):.2f}")
             else: 
                 if 'precio_troquel' in st.session_state:
                     st.session_state.precio_troquel = 0.0
             
             # Planchas
             st.divider()
+            
+            # Determinar si hay ajustes de planchas activos
+            # Usar el valor que ya está cargado en session_state
+            planchas_ajustadas_existe = st.session_state.get('ajustar_planchas', False)
+            
             ajustar_planchas_checked = st.checkbox("Ajustar Planchas", key='ajustar_planchas')
             if ajustar_planchas_checked:
-                valor_planchas = st.number_input(
-                    "Nuevo Precio Total Planchas ($)", 
-                    key='precio_planchas', 
-                    min_value=0.0, 
-                    step=1.0, 
-                    format="%.2f"
+                # Obtener valor inicial desde session_state o usar valor por defecto
+                valor_inicial_planchas = str(st.session_state.get('precio_planchas', 0.0))
+                
+                planchas_text = st.text_input(
+                    "Nuevo Precio Total Planchas ($)",
+                    value=valor_inicial_planchas,
+                    key='precio_planchas_input',
+                    help="Ingrese el precio total de las planchas (ej: 1800.00)"
                 )
-                st.caption(f"Valor configurado: ${valor_planchas}")
+                
+                # Validar y convertir el valor del input
+                try:
+                    if planchas_text and planchas_text.strip():
+                        valor_planchas = float(planchas_text)
+                        if valor_planchas < 0.0:
+                            st.error("El precio de las planchas debe ser mayor o igual a 0")
+                            valor_planchas = 0.0
+                        st.session_state['precio_planchas'] = valor_planchas
+                    else:
+                        st.session_state['precio_planchas'] = 0.0
+                except ValueError:
+                    st.error("Por favor ingrese un valor numérico válido para las planchas")
+                    st.session_state['precio_planchas'] = 0.0
+                
+                st.caption(f"Valor configurado: ${st.session_state.get('precio_planchas', 0.0):.2f}")
             else: 
                 if 'precio_planchas' in st.session_state:
                     st.session_state.precio_planchas = 0.0
@@ -1187,7 +1305,7 @@ def mostrar_calculadora():
                 
             # --- MOVER AJUSTES ADMIN AQUÍ (SOLO DESPUÉS DE SELECCIONAR TIPO PRODUCTO) --- 
         st.divider() # Añadir un divisor antes de los ajustes
-        _mostrar_ajustes_admin() # Llamar a la función de ajustes aquí
+        _mostrar_ajustes_admin(datos_cargados) # Llamar a la función de ajustes aquí
         # --- NO MOSTRAR AJUSTES ADMIN AQUÍ SI NO SE HA SELECCIONADO TIPO PRODUCTO --- 
         # st.divider()
         # _mostrar_ajustes_admin()
@@ -2027,3 +2145,4 @@ def show_reports():
 
 if __name__ == "__main__":
     main()
+
