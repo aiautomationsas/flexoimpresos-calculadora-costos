@@ -63,37 +63,63 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
 
     
     with col1:
-        # Input de ancho usando st.number_input nativo para mejor compatibilidad
+        # Input de ancho usando st.text_input para mejor compatibilidad en Streamlit Cloud
         st.write("**Ancho (mm)**")
         # --- NUEVO: Solucionar conflicto de session_state ---
         # Solo establecer el valor en session_state si no existe o si es diferente
-        if 'ancho' not in st.session_state or st.session_state.get('ancho') != float(default_ancho):
-            st.session_state['ancho'] = float(default_ancho)
+        if 'ancho_input' not in st.session_state or st.session_state.get('ancho_input') != str(default_ancho):
+            st.session_state['ancho_input'] = str(default_ancho)
         
-        ancho_value = st.number_input(
+        ancho_text = st.text_input(
             "Ancho",
-            min_value=1.0,
-            max_value=310.0,
-            step=0.01,
-            format="%.2f",
-            key="ancho"
+            value=st.session_state.get('ancho_input', str(default_ancho)),
+            key="ancho_input",
+            help="Ingrese el ancho en mm (ej: 72.5)"
         )
         
-        # Input de avance usando st.number_input nativo para mejor compatibilidad
+        # Validar y convertir el valor del input
+        try:
+            if ancho_text.strip():
+                ancho_float = float(ancho_text)
+                if ancho_float < 1.0 or ancho_float > 310.0:
+                    st.error("El ancho debe estar entre 1.0 y 310.0 mm")
+                    ancho_float = float(default_ancho)
+                st.session_state['ancho'] = ancho_float
+                st.session_state['ancho_input'] = ancho_text
+            else:
+                st.session_state['ancho'] = float(default_ancho)
+        except ValueError:
+            st.error("Por favor ingrese un valor numérico válido para el ancho")
+            st.session_state['ancho'] = float(default_ancho)
+        
+        # Input de avance usando st.text_input para mejor compatibilidad en Streamlit Cloud
         st.write("**Avance (mm)**")
         # --- NUEVO: Solucionar conflicto de session_state ---
         # Solo establecer el valor en session_state si no existe o si es diferente
-        if 'avance' not in st.session_state or st.session_state.get('avance') != float(default_avance):
-            st.session_state['avance'] = float(default_avance)
+        if 'avance_input' not in st.session_state or st.session_state.get('avance_input') != str(default_avance):
+            st.session_state['avance_input'] = str(default_avance)
         
-        avance_value = st.number_input(
+        avance_text = st.text_input(
             "Avance",
-            min_value=1.0,
-            max_value=523.87,
-            step=0.01,
-            format="%.2f",
-            key="avance"
+            value=st.session_state.get('avance_input', str(default_avance)),
+            key="avance_input",
+            help="Ingrese el avance en mm (ej: 72.5)"
         )
+        
+        # Validar y convertir el valor del input
+        try:
+            if avance_text.strip():
+                avance_float = float(avance_text)
+                if avance_float < 1.0 or avance_float > 523.87:
+                    st.error("El avance debe estar entre 1.0 y 523.87 mm")
+                    avance_float = float(default_avance)
+                st.session_state['avance'] = avance_float
+                st.session_state['avance_input'] = avance_text
+            else:
+                st.session_state['avance'] = float(default_avance)
+        except ValueError:
+            st.error("Por favor ingrese un valor numérico válido para el avance")
+            st.session_state['avance'] = float(default_avance)
     with col2:
         # --- Pistas ---
         usuario_rol = st.session_state.get('usuario_rol', '')
