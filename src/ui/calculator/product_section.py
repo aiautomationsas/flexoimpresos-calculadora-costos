@@ -65,14 +65,10 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
     with col1:
         # Input de ancho usando st.text_input para mejor compatibilidad en Streamlit Cloud
         st.write("**Ancho (mm)**")
-        # --- NUEVO: Solucionar conflicto de session_state ---
-        # Solo establecer el valor en session_state si no existe o si es diferente
-        if 'ancho_input' not in st.session_state or st.session_state.get('ancho_input') != str(default_ancho):
-            st.session_state['ancho_input'] = str(default_ancho)
         
         ancho_text = st.text_input(
             "Ancho",
-            value=st.session_state.get('ancho_input', str(default_ancho)),
+            value=str(default_ancho),
             key="ancho_input",
             help="Ingrese el ancho en mm (ej: 72.5)"
         )
@@ -93,14 +89,10 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
         
         # Input de avance usando st.text_input para mejor compatibilidad en Streamlit Cloud
         st.write("**Avance (mm)**")
-        # --- NUEVO: Solucionar conflicto de session_state ---
-        # Solo establecer el valor en session_state si no existe o si es diferente
-        if 'avance_input' not in st.session_state or st.session_state.get('avance_input') != str(default_avance):
-            st.session_state['avance_input'] = str(default_avance)
         
         avance_text = st.text_input(
             "Avance",
-            value=st.session_state.get('avance_input', str(default_avance)),
+            value=str(default_avance),
             key="avance_input",
             help="Ingrese el avance en mm (ej: 72.5)"
         )
@@ -151,13 +143,7 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
             )
 
         # --- Tintas ---
-        # --- NUEVO: Solucionar conflicto de session_state ---
-        # Solo establecer el valor en session_state si no existe o si es diferente
-        if 'num_tintas' not in st.session_state or st.session_state.get('num_tintas') != int(default_tintas):
-            st.session_state['num_tintas'] = int(default_tintas)
-        
-        # El valor se guarda en st.session_state.num_tintas via key
-        st.number_input("Número de tintas", min_value=0, max_value=7, step=1, key="num_tintas")
+        st.number_input("Número de tintas", min_value=0, max_value=7, step=1, key="num_tintas", value=int(default_tintas))
 
 def _mostrar_material(es_manga: bool, materiales: List[Any], datos_cargados: Optional[Dict] = None):
     """
