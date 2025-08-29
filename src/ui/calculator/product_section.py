@@ -85,7 +85,6 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
                     st.error("El ancho debe estar entre 1.0 y 310.0 mm")
                     ancho_float = float(default_ancho)
                 st.session_state['ancho'] = ancho_float
-                st.session_state['ancho_input'] = ancho_text
             else:
                 st.session_state['ancho'] = float(default_ancho)
         except ValueError:
@@ -114,7 +113,6 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
                     st.error("El avance debe estar entre 1.0 y 523.87 mm")
                     avance_float = float(default_avance)
                 st.session_state['avance'] = avance_float
-                st.session_state['avance_input'] = avance_text
             else:
                 st.session_state['avance'] = float(default_avance)
         except ValueError:
