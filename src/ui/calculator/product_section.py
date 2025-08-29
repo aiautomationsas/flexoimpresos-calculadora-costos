@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit_shadcn_ui as ui
 from typing import Dict, Any, List, Optional
 from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdicio
 from src.data.models import Cliente  # Corrected import: Directly from src.data.models module
@@ -12,31 +11,33 @@ def _mostrar_escalas(default_escalas: str):
     """Muestra y procesa el input de escalas, usando el valor inicial provisto."""
     st.subheader("Cantidades a Cotizar")
     
-    # --- NUEVO: Establecer el valor en session_state si no existe ---
-    if 'escalas_texto_input' not in st.session_state:
-        st.session_state['escalas_texto_input'] = default_escalas
-    
     # Usar el valor inicial pasado como argumento
     escalas_texto = st.text_input(
         "Escalas a cotizar (separadas por coma) *", 
+        value=default_escalas,
         key="escalas_texto_input",
         help="Ej: 1000, 2000, 5000, 10000. Mínimo 100 unidades."
     )
 
     try:
         # Procesar el valor actual del input para validación y guardado en estado
-        escalas_usuario = [int(e.strip()) for e in escalas_texto.split(",") if e.strip()]
-        escalas_usuario = sorted(list(set(escalas_usuario))) 
+        if escalas_texto and escalas_texto.strip():
+            escalas_usuario = [int(e.strip()) for e in escalas_texto.split(",") if e.strip()]
+            escalas_usuario = sorted(list(set(escalas_usuario))) 
 
-        if not escalas_usuario:
-             st.warning("Ingrese al menos una escala.")
-             # Limpiar estado si el input está vacío
-             if 'escalas' in st.session_state: del st.session_state['escalas']
-        elif any(e < 100 for e in escalas_usuario):
-            raise ValueError("Las escalas deben ser mayores o iguales a 100.")
+            if not escalas_usuario:
+                 st.warning("Ingrese al menos una escala.")
+                 # Limpiar estado si el input está vacío
+                 if 'escalas' in st.session_state: del st.session_state['escalas']
+            elif any(e < 100 for e in escalas_usuario):
+                raise ValueError("Las escalas deben ser mayores o iguales a 100.")
+            else:
+                # Guardar la lista procesada en el estado
+                st.session_state['escalas'] = escalas_usuario
         else:
-            # Guardar la lista procesada en el estado
-            st.session_state['escalas'] = escalas_usuario
+            st.warning("Ingrese al menos una escala.")
+            # Limpiar estado si el input está vacío
+            if 'escalas' in st.session_state: del st.session_state['escalas']
 
     except ValueError as e:
         st.error(f"Error en las escalas: {e}")
@@ -75,7 +76,7 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
         
         # Validar y convertir el valor del input
         try:
-            if ancho_text.strip():
+            if ancho_text and ancho_text.strip():
                 ancho_float = float(ancho_text)
                 if ancho_float < 1.0 or ancho_float > 310.0:
                     st.error("El ancho debe estar entre 1.0 y 310.0 mm")
@@ -99,7 +100,7 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
         
         # Validar y convertir el valor del input
         try:
-            if avance_text.strip():
+            if avance_text and avance_text.strip():
                 avance_float = float(avance_text)
                 if avance_float < 1.0 or avance_float > 523.87:
                     st.error("El avance debe estar entre 1.0 y 523.87 mm")
@@ -120,7 +121,7 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
                 st.markdown('<div style="padding: 0.5rem 0; color: #333; font-weight: bold;">1</div>', unsafe_allow_html=True)
                 # Guardar explícitamente en session state si es diferente
                 if st.session_state.get('num_pistas_manga') != 1:
-                    st.session_state.num_pistas_manga = 1
+                    st.session_state['num_pistas_manga'] = 1
             else:
                 # Input numérico para admin/otros en manga
                 # El valor se guarda en st.session_state.num_pistas_manga via key
@@ -429,7 +430,6 @@ def _mostrar_grafado_altura(es_manga: bool, tipos_grafado: List[Any], datos_carg
                 # Forzar grafado 'Sin grafado' si el seleccionado no es 1
                 if st.session_state.get("grafado_seleccionado_id") not in (None, 1):
                     st.session_state["grafado_seleccionado_id"] = 1
-                    st.session_state["tipo_grafado_select"] = next((i for i, tg in enumerate(tipos_grafado) if tg.id == 1), 0)
                     st.warning("Para fundas transparentes de ancho efectivo > 325mm, se fuerza 'Sin grafado'.")
                     st.rerun()
     except Exception:
@@ -510,7 +510,7 @@ def _mostrar_acabados_y_empaque(es_manga: bool, acabados: List[Any], datos_carga
             st.markdown('<label style="font-size: 0.875rem; color: #555;">Unidades por paquete</label>', unsafe_allow_html=True)
             st.markdown('<div style="padding: 0.5rem 0; color: #333; font-weight: bold;">100</div>', unsafe_allow_html=True)
             # Asegurar que el valor en session_state sea 100
-            st.session_state.num_paquetes = 100
+            st.session_state['num_paquetes'] = 100
         else:
             # Para etiquetas, mantener campo editable
             empaque_label = "Etiquetas por rollo"
@@ -627,7 +627,7 @@ def _mostrar_opciones_adicionales(es_manga: bool, datos_cargados: Optional[Dict]
     else:
         # Asegurar que el estado es False si es manga
         if st.session_state.get("tiene_troquel") is not False:
-             st.session_state.tiene_troquel = False
+             st.session_state['tiene_troquel'] = False
 
     # --- Planchas Separadas (Solo Admin) ---
     if st.session_state.get('usuario_rol') == 'administrador':
@@ -645,7 +645,7 @@ def _mostrar_opciones_adicionales(es_manga: bool, datos_cargados: Optional[Dict]
     else:
         # Si no es admin, asegurar que el estado sea False
         if st.session_state.get("planchas_separadas") is not False:
-             st.session_state.planchas_separadas = False
+             st.session_state['planchas_separadas'] = False
 
 
 

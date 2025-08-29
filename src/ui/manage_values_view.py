@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit_shadcn_ui as ui
 import pandas as pd
 import traceback
 import time
@@ -73,12 +72,13 @@ def show_manage_values():
                     # Obtener el valor actual
                     valor_actual = float(df_mat_adh[df_mat_adh['ID'] == selected_mat_adh_id]['Valor ($/m²)'].values[0])
                     
-                    # Input para nuevo valor usando streamlit-shadcn-ui
+                    # Input para nuevo valor
                     st.write("**Nuevo valor ($/m²):**")
-                    nuevo_valor_input = ui.input(
+                    nuevo_valor_input = st.text_input(
+                        "Nuevo valor",
+                        value=str(int(valor_actual)),
                         key="new_value_mat_adh_input",
-                        placeholder=str(int(valor_actual)),
-                        type="number"
+                        help="Ingrese el nuevo valor en pesos por metro cuadrado"
                     )
                     
                     # Convertir y validar el valor ingresado
@@ -162,12 +162,13 @@ def show_manage_values():
                     # Obtener el acabado seleccionado
                     acabado = next((a for a in acabados if a.id == selected_acabado_id), None)
                     if acabado:
-                        # Input para nuevo valor usando streamlit-shadcn-ui
+                        # Input para nuevo valor
                         st.write("**Nuevo valor ($/m²):**")
-                        nuevo_valor_input = ui.input(
+                        nuevo_valor_input = st.text_input(
+                            "Nuevo valor",
+                            value=str(int(acabado.valor)),
                             key="new_value_acabado_input",
-                            placeholder=str(int(acabado.valor)),
-                            type="number"
+                            help="Ingrese el nuevo valor en pesos por metro cuadrado"
                         )
                         
                         # Convertir y validar el valor ingresado
