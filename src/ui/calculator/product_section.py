@@ -12,10 +12,13 @@ def _mostrar_escalas(default_escalas: str):
     """Muestra y procesa el input de escalas, usando el valor inicial provisto."""
     st.subheader("Cantidades a Cotizar")
     
+    # --- NUEVO: Establecer el valor en session_state si no existe ---
+    if 'escalas_texto_input' not in st.session_state:
+        st.session_state['escalas_texto_input'] = default_escalas
+    
     # Usar el valor inicial pasado como argumento
     escalas_texto = st.text_input(
         "Escalas a cotizar (separadas por coma) *", 
-        value=default_escalas, # <-- USAR EL VALOR PASADO
         key="escalas_texto_input",
         help="Ej: 1000, 2000, 5000, 10000. Mínimo 100 unidades."
     )
@@ -60,53 +63,37 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
 
     
     with col1:
-        # Input de ancho usando streamlit-shadcn-ui para mejor manejo de decimales
+        # Input de ancho usando st.number_input nativo para mejor compatibilidad
         st.write("**Ancho (mm)**")
-        ancho_value = ui.input(
-            key="ancho_input",
-            placeholder="50.00",
-            type="number"
-        )
-        
-        # Convertir el valor del input a float y validar
-        try:
-            ancho_float = float(ancho_value) if ancho_value else float(default_ancho)
-            if ancho_float < 1.00 or ancho_float > 310.00:
-                st.error("El ancho debe estar entre 1.00 y 310.00 mm")
-                ancho_float = float(default_ancho)
-            
-            # Formatear el valor con 2 decimales si es entero
-            if ancho_float.is_integer():
-                ancho_float = round(ancho_float, 2)
-            
-            st.session_state['ancho'] = ancho_float
-        except ValueError:
-            st.error("Por favor ingrese un valor numérico válido para el ancho")
+        # --- NUEVO: Solucionar conflicto de session_state ---
+        # Solo establecer el valor en session_state si no existe o si es diferente
+        if 'ancho' not in st.session_state or st.session_state.get('ancho') != float(default_ancho):
             st.session_state['ancho'] = float(default_ancho)
         
-        # Input de avance usando streamlit-shadcn-ui para mejor manejo de decimales
-        st.write("**Avance (mm)**")
-        avance_value = ui.input(
-            key="avance_input",
-            placeholder="50.00",
-            type="number"
+        ancho_value = st.number_input(
+            "Ancho",
+            min_value=1.0,
+            max_value=310.0,
+            step=0.01,
+            format="%.2f",
+            key="ancho"
         )
         
-        # Convertir el valor del input a float y validar
-        try:
-            avance_float = float(avance_value) if avance_value else float(default_avance)
-            if avance_float < 1.00 or avance_float > 523.87:
-                st.error("El avance debe estar entre 1.00 y 523.87 mm")
-                avance_float = float(default_avance)
-            
-            # Formatear el valor con 2 decimales si es entero
-            if avance_float.is_integer():
-                avance_float = round(avance_float, 2)
-            
-            st.session_state['avance'] = avance_float
-        except ValueError:
-            st.error("Por favor ingrese un valor numérico válido para el avance")
+        # Input de avance usando st.number_input nativo para mejor compatibilidad
+        st.write("**Avance (mm)**")
+        # --- NUEVO: Solucionar conflicto de session_state ---
+        # Solo establecer el valor en session_state si no existe o si es diferente
+        if 'avance' not in st.session_state or st.session_state.get('avance') != float(default_avance):
             st.session_state['avance'] = float(default_avance)
+        
+        avance_value = st.number_input(
+            "Avance",
+            min_value=1.0,
+            max_value=523.87,
+            step=0.01,
+            format="%.2f",
+            key="avance"
+        )
     with col2:
         # --- Pistas ---
         usuario_rol = st.session_state.get('usuario_rol', '')
@@ -140,8 +127,13 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
             )
 
         # --- Tintas ---
+        # --- NUEVO: Solucionar conflicto de session_state ---
+        # Solo establecer el valor en session_state si no existe o si es diferente
+        if 'num_tintas' not in st.session_state or st.session_state.get('num_tintas') != int(default_tintas):
+            st.session_state['num_tintas'] = int(default_tintas)
+        
         # El valor se guarda en st.session_state.num_tintas via key
-        st.number_input("Número de tintas", min_value=0, max_value=7, step=1, key="num_tintas", value=int(default_tintas))
+        st.number_input("Número de tintas", min_value=0, max_value=7, step=1, key="num_tintas")
 
 def _mostrar_material(es_manga: bool, materiales: List[Any], datos_cargados: Optional[Dict] = None):
     """
@@ -512,7 +504,12 @@ def _mostrar_acabados_y_empaque(es_manga: bool, acabados: List[Any], datos_carga
         else:
             # Para etiquetas, mantener campo editable
             empaque_label = "Etiquetas por rollo"
-            st.number_input(empaque_label, min_value=1, step=1, key="num_paquetes", value=int(default_num_paquetes))
+            # --- NUEVO: Solucionar conflicto de session_state ---
+            # Solo establecer el valor en session_state si no existe o si es diferente
+            if 'num_paquetes' not in st.session_state or st.session_state.get('num_paquetes') != int(default_num_paquetes):
+                st.session_state['num_paquetes'] = int(default_num_paquetes)
+            
+            st.number_input(empaque_label, min_value=1, step=1, key="num_paquetes")
 
 
 def _mostrar_opciones_adicionales(es_manga: bool, datos_cargados: Optional[Dict] = None):
@@ -624,11 +621,15 @@ def _mostrar_opciones_adicionales(es_manga: bool, datos_cargados: Optional[Dict]
 
     # --- Planchas Separadas (Solo Admin) ---
     if st.session_state.get('usuario_rol') == 'administrador':
+        # --- NUEVO: Solucionar conflicto de session_state ---
+        # Solo establecer el valor en session_state si no existe o si es diferente
+        if 'planchas_separadas' not in st.session_state or st.session_state.get('planchas_separadas') != bool(default_planchas_sep):
+            st.session_state['planchas_separadas'] = bool(default_planchas_sep)
+        
         # El valor bool se guarda en st.session_state.planchas_separadas
         st.checkbox(
             "¿Planchas por separado?", 
             key="planchas_separadas", 
-            value=bool(default_planchas_sep),
             help="Si se marca, el costo de las planchas se mostrará como un ítem separado en la cotización."
         )
     else:

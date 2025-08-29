@@ -559,7 +559,7 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
                     'valor_troquel': datos_calculo_persistir['valor_troquel'], # Usar valor final persistido
                     'valor_plancha_separado': datos_calculo_persistir.get('valor_plancha_separado'), # Valor ya calculado/ajustado
                     'planchas_x_separado': datos_escala.planchas_por_separado,
-                    'existe_troquel': datos_escala.troquel_existe, # Usar valor procesado
+                    'existe_troquel': form_data.get('tiene_troquel', False), # Usar valor del formulario en lugar del calculado
                     'numero_pistas': datos_escala.pistas,
                     'avance': datos_escala.avance, # Usar avance de datos_escala
                     'ancho': form_data['ancho'], # Ancho original
@@ -574,8 +574,22 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
                 if es_manga:
                     kwargs_modelo['tipo_grafado_id'] = form_data.get('tipo_grafado_id')
 
-                st.session_state.cotizacion_model = manager.preparar_nueva_cotizacion_model(**kwargs_modelo)
-                print("Modelo Cotizacion preparado y guardado en session_state.")
+                # --- NUEVO: Lógica para modo edición vs nueva cotización ---
+                is_edit_mode = st.session_state.get('modo_edicion', False)
+                if is_edit_mode:
+                    # En modo edición, actualizar el modelo existente
+                    cotizacion_existente = st.session_state.get('cotizacion_model')
+                    if cotizacion_existente and cotizacion_existente.id:
+                        st.session_state.cotizacion_model = manager.actualizar_cotizacion_model(cotizacion_existente, **kwargs_modelo)
+                        print("Modelo Cotizacion actualizado para edición.")
+                    else:
+                        st.error("Error: No se encontró el modelo de cotización existente para actualizar.")
+                        return None
+                else:
+                    # Para nueva cotización, crear nuevo modelo
+                    st.session_state.cotizacion_model = manager.preparar_nueva_cotizacion_model(**kwargs_modelo)
+                    print("Modelo Cotizacion preparado para nueva cotización.")
+                # --- FIN: Lógica para modo edición vs nueva cotización ---
                 st.session_state.cotizacion_calculada = True # Indicar que hay un cálculo listo
 
             except CotizacionManagerError as cme:
@@ -854,7 +868,117 @@ def mostrar_calculadora():
                                         st.session_state['rentabilidad_ajustada'] = params_esp.get('rentabilidad_ajustada')
                         except Exception as e_precarga:
                             print(f"ADVERTENCIA: No se pudieron precargar parametros_especiales: {e_precarga}")
-                        # Nota: el manejo de "sin tipo de producto" ya se hace arriba
+                        
+                        # --- NUEVO: Establecer existe_troquel en session_state.tiene_troquel ---
+                        try:
+                            # Obtener el valor de existe_troquel de los datos cargados
+                            existe_troquel_cargado = datos_cargados.get('existe_troquel', False)
+                            print(f"DEBUG: Valor de existe_troquel cargado de BD: {existe_troquel_cargado} (tipo: {type(existe_troquel_cargado)})")
+                            
+                            # Convertir a booleano explícitamente
+                            existe_troquel_bool = bool(existe_troquel_cargado)
+                            print(f"DEBUG: Valor convertido a booleano: {existe_troquel_bool}")
+                            
+                            # Establecer en session_state.tiene_troquel
+                            st.session_state['tiene_troquel'] = "Sí" if existe_troquel_bool else "No"
+                            print(f"DEBUG: Establecido session_state.tiene_troquel = '{st.session_state['tiene_troquel']}'")
+                            
+                        except Exception as e_troquel:
+                            print(f"ERROR: No se pudo establecer existe_troquel en session_state: {e_troquel}")
+                            # Establecer valor por defecto
+                            st.session_state['tiene_troquel'] = "No"
+                        # --- FIN: Establecer existe_troquel ---
+                        
+                        # --- NUEVO: Establecer todos los valores necesarios en session_state ---
+                        try:
+                            # Dimensiones y tintas
+                            st.session_state['ancho'] = float(datos_cargados.get('ancho', 50.0))
+                            st.session_state['avance'] = float(datos_cargados.get('avance', 50.0))
+                            st.session_state['numero_pistas'] = int(datos_cargados.get('numero_pistas', 1))
+                            st.session_state['num_tintas'] = int(datos_cargados.get('num_tintas', 0))
+                            
+                            # Empaque
+                            st.session_state['num_paquetes'] = int(datos_cargados.get('num_paquetes_rollos', 1))
+                            
+                            # Opciones adicionales
+                            st.session_state['planchas_separadas'] = bool(datos_cargados.get('planchas_x_separado', False))
+                            
+                            # Valores de troquel y planchas
+                            valor_troquel = datos_cargados.get('valor_troquel')
+                            if valor_troquel is not None:
+                                st.session_state['valor_troquel'] = float(valor_troquel)
+                            else:
+                                st.session_state['valor_troquel'] = 0.0
+                                
+                            valor_plancha_separado = datos_cargados.get('valor_plancha_separado')
+                            if valor_plancha_separado is not None:
+                                st.session_state['valor_plancha_separado'] = float(valor_plancha_separado)
+                            else:
+                                st.session_state['valor_plancha_separado'] = 0.0
+                            
+                            # Material y acabado
+                            st.session_state['material_adhesivo_id'] = datos_cargados.get('material_adhesivo_id')
+                            st.session_state['acabado_id'] = datos_cargados.get('acabado_id')
+                            
+                            # Grafado (solo para mangas)
+                            if datos_cargados.get('es_manga', False):
+                                st.session_state['altura_grafado'] = float(datos_cargados.get('altura_grafado', 0.0)) if datos_cargados.get('altura_grafado') is not None else 0.0
+                                st.session_state['tipo_grafado_id'] = datos_cargados.get('tipo_grafado_id')
+                            
+                            # Escalas (convertir a string formateado)
+                            escalas = datos_cargados.get('escalas', [])
+                            if escalas:
+                                escalas_str = ", ".join([str(esc.get('escala', '')) for esc in escalas if esc.get('escala')])
+                                st.session_state['escalas'] = escalas_str
+                            else:
+                                st.session_state['escalas'] = ""
+                                
+                            print(f"DEBUG: Valores establecidos en session_state:")
+                            print(f"  ancho: {st.session_state.get('ancho')}")
+                            print(f"  avance: {st.session_state.get('avance')}")
+                            print(f"  numero_pistas: {st.session_state.get('numero_pistas')}")
+                            print(f"  num_tintas: {st.session_state.get('num_tintas')}")
+                            print(f"  num_paquetes: {st.session_state.get('num_paquetes')}")
+                            print(f"  planchas_separadas: {st.session_state.get('planchas_separadas')}")
+                            print(f"  valor_troquel: {st.session_state.get('valor_troquel')}")
+                            print(f"  valor_plancha_separado: {st.session_state.get('valor_plancha_separado')}")
+                            print(f"  material_adhesivo_id: {st.session_state.get('material_adhesivo_id')}")
+                            print(f"  acabado_id: {st.session_state.get('acabado_id')}")
+                            print(f"  escalas: {st.session_state.get('escalas')}")
+                            
+                        except Exception as e_valores:
+                            print(f"ERROR: No se pudieron establecer valores en session_state: {e_valores}")
+                        # --- FIN: Establecer todos los valores ---
+                        
+                        # --- NUEVO: Cargar modelo de cotización existente ---
+                        try:
+                            from src.data.models import Cotizacion
+                            # Crear modelo de cotización existente para edición
+                            cotizacion_existente = Cotizacion()
+                            cotizacion_existente.id = cotizacion_id_editar
+                            cotizacion_existente.material_adhesivo_id = datos_cargados.get('material_adhesivo_id')
+                            cotizacion_existente.acabado_id = datos_cargados.get('acabado_id')
+                            cotizacion_existente.num_tintas = int(datos_cargados.get('num_tintas', 0))
+                            cotizacion_existente.num_paquetes_rollos = int(datos_cargados.get('num_paquetes_rollos', 1))
+                            cotizacion_existente.es_manga = bool(datos_cargados.get('es_manga', False))
+                            cotizacion_existente.valor_troquel = float(datos_cargados.get('valor_troquel', 0.0)) if datos_cargados.get('valor_troquel') is not None else None
+                            cotizacion_existente.valor_plancha_separado = float(datos_cargados.get('valor_plancha_separado', 0.0)) if datos_cargados.get('valor_plancha_separado') is not None else None
+                            cotizacion_existente.planchas_x_separado = bool(datos_cargados.get('planchas_x_separado', False))
+                            cotizacion_existente.existe_troquel = bool(datos_cargados.get('existe_troquel', False))
+                            cotizacion_existente.numero_pistas = int(datos_cargados.get('numero_pistas', 1))
+                            cotizacion_existente.tipo_producto_id = datos_cargados.get('tipo_producto_id')
+                            cotizacion_existente.ancho = float(datos_cargados.get('ancho', 0.0))
+                            cotizacion_existente.avance = float(datos_cargados.get('avance', 0.0))
+                            cotizacion_existente.altura_grafado = float(datos_cargados.get('altura_grafado', 0.0)) if datos_cargados.get('altura_grafado') is not None else None
+                            cotizacion_existente.tipo_grafado_id = datos_cargados.get('tipo_grafado_id')
+                            
+                            # Establecer en session_state
+                            st.session_state['cotizacion_model'] = cotizacion_existente
+                            print(f"DEBUG: Modelo de cotización existente cargado con ID: {cotizacion_existente.id}")
+                            
+                        except Exception as e_modelo:
+                            print(f"ERROR: No se pudo cargar el modelo de cotización existente: {e_modelo}")
+                        # --- FIN: Cargar modelo de cotización existente ---
                     else:
                         st.error(f"No se pudieron cargar detalles para Cotización ID {cotizacion_id_editar}.")
                         st.session_state.modo_edicion = False
