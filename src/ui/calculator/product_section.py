@@ -124,27 +124,35 @@ def _mostrar_dimensiones_y_tintas(es_manga: bool, datos_cargados: Optional[Dict]
                     st.session_state['num_pistas_manga'] = 1
             else:
                 # Input numérico para admin/otros en manga
-                # El valor se guarda en st.session_state.num_pistas_manga via key
+                # Establecer el valor por defecto en session_state si no existe
+                if 'num_pistas_manga' not in st.session_state:
+                    st.session_state['num_pistas_manga'] = int(default_pistas)
+                
                 st.number_input(
                     "Número de pistas", 
                     min_value=1, 
                     step=1, 
-                    key="num_pistas_manga",
-                    value=int(default_pistas)
+                    key="num_pistas_manga"
                 )
         else:
             # Input numérico para no-manga (todos los roles)
-            # El valor se guarda en st.session_state.num_pistas_otro via key
+            # Establecer el valor por defecto en session_state si no existe
+            if 'num_pistas_otro' not in st.session_state:
+                st.session_state['num_pistas_otro'] = int(default_pistas)
+            
             st.number_input(
                 "Número de pistas", 
                 min_value=1, 
                 step=1, 
-                key="num_pistas_otro",
-                 value=int(default_pistas)
+                key="num_pistas_otro"
             )
 
         # --- Tintas ---
-        st.number_input("Número de tintas", min_value=0, max_value=7, step=1, key="num_tintas", value=int(default_tintas))
+        # Establecer el valor por defecto en session_state si no existe
+        if 'num_tintas' not in st.session_state:
+            st.session_state['num_tintas'] = int(default_tintas)
+        
+        st.number_input("Número de tintas", min_value=0, max_value=7, step=1, key="num_tintas")
 
 def _mostrar_material(es_manga: bool, materiales: List[Any], datos_cargados: Optional[Dict] = None):
     """
@@ -399,11 +407,12 @@ def _mostrar_grafado_altura(es_manga: bool, tipos_grafado: List[Any], datos_carg
     if current_id in [3, 4]:
         valor_mostrar = 0.0
         
-        # Determinar valor a mostrar
-        if datos_cargados and 'altura_grafado' in datos_cargados and datos_cargados['altura_grafado'] is not None:
-            valor_mostrar = float(datos_cargados['altura_grafado'])
-        elif st.session_state.get("altura_grafado") is not None:
-            valor_mostrar = float(st.session_state.get("altura_grafado"))
+        # Determinar valor a mostrar y establecer en session_state si no existe
+        if 'altura_grafado' not in st.session_state:
+            if datos_cargados and 'altura_grafado' in datos_cargados and datos_cargados['altura_grafado'] is not None:
+                st.session_state['altura_grafado'] = float(datos_cargados['altura_grafado'])
+            else:
+                st.session_state['altura_grafado'] = 0.0
             
         # Mostrar campo de altura
         st.number_input(
@@ -412,7 +421,6 @@ def _mostrar_grafado_altura(es_manga: bool, tipos_grafado: List[Any], datos_carg
             step=1.0,
             format="%.2f",
             key="altura_grafado",
-            value=valor_mostrar,
             help="Incrementos de 1mm. Use los botones + y - para ajustar fácilmente."
         )
     else:
