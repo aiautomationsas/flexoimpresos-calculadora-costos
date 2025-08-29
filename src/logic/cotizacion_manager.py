@@ -499,14 +499,14 @@ class CotizacionManager:
                     'rentabilidad',
                     'valor_material',
                     'valor_plancha_para_calculo',  # Clave en datos_calculo
-                    'valor_troquel_total',         # Clave en datos_calculo
+                    'valor_troquel',               # Clave en datos_calculo
                     'valor_acabado'
                 ]
                 
                 # Mapeo entre claves en datos_calculo y calculos_actuales
                 mapeo_claves = {
                     'valor_plancha_para_calculo': 'valor_plancha',
-                    'valor_troquel_total': 'valor_troquel'
+                    'valor_troquel': 'valor_troquel'
                 }
                 
                 # Verificar cada campo
@@ -685,11 +685,18 @@ class CotizacionManager:
             # Asegurarse de que las claves coincidan con las esperadas por guardar_calculos_escala
             # y proporcionar valores por defecto o manejar errores si faltan claves.
             try:
+                # Debug: Verificar el valor del troquel antes de guardar
+                valor_troquel_a_guardar = datos_calculo.get('valor_troquel', 0.0)
+                print(f"\n=== DEBUG VALOR TROQUEL ANTES DE GUARDAR ===")
+                print(f"datos_calculo keys: {list(datos_calculo.keys())}")
+                print(f"valor_troquel a guardar: {valor_troquel_a_guardar}")
+                print(f"tipo de valor_troquel: {type(valor_troquel_a_guardar)}")
+                
                 success_calculos = self.db.guardar_calculos_escala(
                     cotizacion_id=cotizacion_id,
                     valor_material=datos_calculo.get('valor_material', 0.0),
                     valor_plancha=datos_calculo.get('valor_plancha_para_calculo', 0.0), # Usar la clave correcta
-                    valor_troquel=datos_calculo.get('valor_troquel_total', 0.0), # Usar la clave correcta
+                    valor_troquel=valor_troquel_a_guardar, # Usar la clave correcta
                     rentabilidad=datos_calculo.get('rentabilidad', 0.0),
                     avance=datos_calculo.get('avance_calculado', cotizacion_model.avance), # Usar valor calculado o del modelo
                     ancho=datos_calculo.get('ancho_calculado', cotizacion_model.ancho),

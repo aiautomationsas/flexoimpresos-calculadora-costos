@@ -160,11 +160,11 @@ def generar_informe_tecnico_markdown(
             # Intentar obtener el valor del troquel de otras fuentes
             valor_troquel_alternativo = None
             
-            # Opción 1: Buscar en valor_troquel_total
-            if 'valor_troquel_total' in calculos_guardados:
-                valor_troquel_alternativo = calculos_guardados.get('valor_troquel_total')
+            # Opción 1: Buscar en valor_troquel
+            if 'valor_troquel' in calculos_guardados:
+                valor_troquel_alternativo = calculos_guardados.get('valor_troquel')
                 if valor_troquel_alternativo:
-                    print(f"Usando valor_troquel_total como alternativa: {valor_troquel_alternativo}")
+                    print(f"Usando valor_troquel como alternativa: {valor_troquel_alternativo}")
             
             # Opción 2: Buscar en los resultados de escala
             if not valor_troquel_alternativo and 'resultados' in cotizacion_data:

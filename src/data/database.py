@@ -2202,6 +2202,7 @@ class DBManager:
             
             print(f"\nLlamando a RPC 'upsert_calculos_escala' para cotizacion_id: {cotizacion_id}")
             print(f"Parámetros RPC: {rpc_params}")
+            print(f"DEBUG: valor_troquel específico: {rpc_params.get('p_valor_troquel')}")
             
             # Llamar a la RPC
             response = self.supabase.rpc('upsert_calculos_escala', rpc_params).execute()
