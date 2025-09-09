@@ -125,17 +125,18 @@ class CalculadoraDesperdicio:
             for rep in range(1, self.MAX_REPETICIONES + 1):
                 ancho_total = self._calcular_ancho_total(avance_mm, rep)
                 
-                # Verificar si el ancho total es válido (para rep=1 siempre es válido)
-                if rep == 1 or self._validar_ancho_total(ancho_total):
-                    desperdicio = self._calcular_desperdicio_individual(mm, avance_mm, rep)
-                    if desperdicio < 999:
-                        opciones.append(OpcionDesperdicio(
-                            dientes=dientes,
-                            medida_mm=mm,
-                            desperdicio=desperdicio,
-                            repeticiones=rep,
-                            ancho_total=ancho_total
-                        ))
+                # IMPORTANTE: No validamos el ancho total para repeticiones en la circunferencia
+                # porque esto es para repeticiones a lo largo, no a lo ancho (pistas)
+                # La validación del ancho total solo debe aplicarse a las pistas (repeticiones a lo ancho)
+                desperdicio = self._calcular_desperdicio_individual(mm, avance_mm, rep)
+                if desperdicio < 999:
+                    opciones.append(OpcionDesperdicio(
+                        dientes=dientes,
+                        medida_mm=mm,
+                        desperdicio=desperdicio,
+                        repeticiones=rep,
+                        ancho_total=ancho_total
+                    ))
         
         return self._filtrar_opciones_validas(opciones)
 

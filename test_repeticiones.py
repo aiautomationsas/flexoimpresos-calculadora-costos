@@ -133,17 +133,18 @@ class CalculadoraDesperdicio:
             for rep in range(1, self.MAX_REPETICIONES + 1):
                 ancho_total = self._calcular_ancho_total(avance_mm, rep)
                 
-                # Verificar si el ancho total es válido (para rep=1 siempre es válido)
-                if rep == 1 or self._validar_ancho_total(ancho_total):
-                    desperdicio = self._calcular_desperdicio_individual(mm, avance_mm, rep)
-                    if desperdicio < 999:
-                        opciones.append(OpcionDesperdicio(
-                            dientes=dientes,
-                            medida_mm=mm,
-                            desperdicio=desperdicio,
-                            repeticiones=rep,
-                            ancho_total=ancho_total
-                        ))
+                # IMPORTANTE: No validamos el ancho total para repeticiones en la circunferencia
+                # porque esto es para repeticiones a lo largo, no a lo ancho (pistas)
+                # if rep == 1 or self._validar_ancho_total(ancho_total):
+                desperdicio = self._calcular_desperdicio_individual(mm, avance_mm, rep)
+                if desperdicio < 999:
+                    opciones.append(OpcionDesperdicio(
+                        dientes=dientes,
+                        medida_mm=mm,
+                        desperdicio=desperdicio,
+                        repeticiones=rep,
+                        ancho_total=ancho_total
+                    ))
         
         return self._filtrar_opciones_validas(opciones)
 
@@ -241,14 +242,14 @@ def mostrar_opciones_por_unidad(avance: float, es_manga: bool = False):
         mejor_op = opciones_ordenadas[0]
         
         # Verificar si coincide con la tabla de repeticiones fijas
-        rep_fija = calculadora._obtener_repeticiones_fijas(dientes)
+        # rep_fija = calculadora._obtener_repeticiones_fijas(dientes) # Eliminado: Este método ya no existe
         
         # Mostrar la mejor opción para esta unidad
         print(f"{dientes:<10} {mejor_op.repeticiones:<15} {mejor_op.medida_mm:<15.2f} {mejor_op.desperdicio:<15.4f} {mejor_op.ancho_total:<15.2f}")
         
         # Si hay una repetición fija definida, mostrarla para comparación
-        if rep_fija is not None and rep_fija != mejor_op.repeticiones:
-            print(f"  ↳ Repetición fija en tabla: {rep_fija} (DIFERENTE DE LA ÓPTIMA)")
+        # if rep_fija is not None and rep_fija != mejor_op.repeticiones:
+        #     print(f"  ↳ Repetición fija en tabla: {rep_fija} (DIFERENTE DE LA ÓPTIMA)")
     
     print(f"\nTODAS LAS OPCIONES DISPONIBLES POR UNIDAD:")
     for dientes in unidades_ordenadas:
@@ -268,11 +269,11 @@ def main():
     print("=====================================================")
     
     # Valores específicos del caso de prueba
-    avance = 70.0
+    avance = 165.0
     ancho = 50.0
     pistas = 3
     tintas = 3
-    unidad = 64.0
+    unidad = 108.0
     es_manga = False
     
     print(f"Valores de prueba:")
@@ -288,7 +289,7 @@ def main():
     
     # Probar la unidad específica
     print("\nPRUEBA DE UNIDAD ESPECÍFICA")
-    print("==========================")
+    print("========================")
     
     calculadora = CalculadoraDesperdicio(es_manga=es_manga)
     mejor_op_unidad = calculadora.obtener_mejor_opcion_para_unidad(avance, unidad)

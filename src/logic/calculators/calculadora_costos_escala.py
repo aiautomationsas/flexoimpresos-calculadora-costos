@@ -26,8 +26,8 @@ class DatosEscala:
     pistas: int
     ancho: float  # Ancho base para calcular ancho_total
     avance: float  # Avance en mm
-    avance_total: float  # Avance total incluyendo gaps
-    desperdicio: float
+    avance_total: Optional[float] = None  # Ahora es opcional y por defecto None
+    desperdicio: float = 0.0 # Añadido valor por defecto
     velocidad_maquina: float = VELOCIDAD_MAQUINA_NORMAL  # Valor fijo desde constants.py
     mo_montaje: float = MO_MONTAJE  # Valor fijo desde constants.py
     mo_impresion: float = MO_IMPRESION  # Valor fijo desde constants.py
@@ -87,6 +87,8 @@ class CalculadoraCostosEscala(CalculadoraBase):
         self.MM_COLOR = MM_COLOR  # MM de color para cálculo de desperdicio desde constants.py
         self.GAP_FIJO = GAP_FIJO  # R3 es 50 tanto para mangas como etiquetas desde constants.py
         self.VALOR_MM_PLANCHA = 1.5  # Valor por mm de plancha
+        self.GAP_AVANCE_ETIQUETAS = GAP_AVANCE_ETIQUETAS # Añadido
+        self.GAP_AVANCE_MANGA = GAP_AVANCE_MANGAS # Añadido
 
     def _get_calculadora_desperdicios(self, es_manga: bool = False) -> CalculadoraDesperdicio:
         """
@@ -377,8 +379,9 @@ Cálculo:
             raise ValueError("El número de tintas debe estar entre 0 y 7")
         if datos.avance <= 0:
             raise ValueError("El avance debe ser mayor que 0")
-        if hasattr(datos, 'avance_total') and datos.avance_total <= 0:
-            raise ValueError("El avance total debe ser mayor que 0")
+        # Modificado: Solo validar avance_total si no es None
+        if datos.avance_total is not None and datos.avance_total <= 0:
+            raise ValueError("El avance total debe ser mayor que 0 (si se proporciona)")
         # Validar ancho total solo para etiquetas (la fórmula de ancho total es específica de etiquetas aquí)
         if not es_manga:
             ancho_total, _ = self.calcular_ancho_total(num_tintas, datos.pistas, datos.ancho)
@@ -890,6 +893,12 @@ Cálculo:
             print(f"- Es manga: {es_manga}")
             print(f"- NO se realiza ajuste interno de tintas (debe venir ya ajustado desde app_calculadora_costos.py)")
             
+            # Calcular y asignar avance_total a datos antes de validar
+            s3_result = self._calcular_s3(datos.avance, es_manga)
+            if 'error' in s3_result:
+                raise ValueError(f"Error calculando avance total (S3): {s3_result['error']}")
+            datos.avance_total = s3_result['s3']
+
             # Validar entradas con el número de tintas recibido
             self._validar_inputs(datos, num_tintas_interno, es_manga)
             
