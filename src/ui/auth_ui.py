@@ -79,7 +79,7 @@ def handle_logout() -> None:
     try:
         if 'auth_manager' in st.session_state:
             st.session_state.auth_manager.logout()
-        SessionManager.full_clear()
+        # No llamar SessionManager.full_clear() aquí porque ya se llama en auth_manager.logout()
         SessionManager.add_message("Sesión cerrada exitosamente", "success")
     except Exception as e:
         print(f"Error en logout: {str(e)}")
@@ -130,7 +130,7 @@ def logout_user() -> None:
         with st.spinner("Cerrando sesión..."):
             if 'auth_manager' in st.session_state:
                 st.session_state.auth_manager.logout()
-            SessionManager.full_clear()
+            # No llamar SessionManager.full_clear() aquí porque ya se llama en auth_manager.logout()
             st.success("Sesión cerrada exitosamente")
             st.rerun()
     except Exception as e:
@@ -169,6 +169,16 @@ def show_profile_update() -> None:
         </div>
     """, unsafe_allow_html=True)
 
+    # Botón para activar/desactivar cambio de contraseña (fuera del formulario)
+    if not st.session_state.get('show_password_change', False):
+        if st.sidebar.button("🔐 Cambiar contraseña", key="toggle_password_change", use_container_width=True):
+            st.session_state.show_password_change = True
+            st.rerun()
+    else:
+        if st.sidebar.button("❌ Cancelar cambio de contraseña", key="cancel_password_change", use_container_width=True):
+            st.session_state.show_password_change = False
+            st.rerun()
+
     with st.sidebar.form("profile_update_form"):
         perfil = st.session_state.get('perfil_usuario', {})
         
@@ -176,16 +186,18 @@ def show_profile_update() -> None:
         nuevo_email = st.text_input("Email", value=perfil.get('email', ''), placeholder="tu@email.com")
 
         st.caption("El email se usa para iniciar sesión y recibir notificaciones.")
-
-        cambiar_password = st.checkbox("Cambiar contraseña")
+        
+        # Campos de contraseña que se muestran cuando está activado
         nueva_password = None
         confirmar_password = None
-        if cambiar_password:
+        if st.session_state.get('show_password_change', False):
+            st.markdown("---")
+            st.markdown("**🔐 Nueva Contraseña**")
             col1, col2 = st.columns(2)
             with col1:
-                nueva_password = st.text_input("Nueva contraseña", type="password", placeholder="Mínimo 8 caracteres")
+                nueva_password = st.text_input("Nueva contraseña", type="password", placeholder="Mínimo 8 caracteres", key="new_password_input")
             with col2:
-                confirmar_password = st.text_input("Confirmar", type="password", placeholder="Repite la contraseña")
+                confirmar_password = st.text_input("Confirmar", type="password", placeholder="Repite la contraseña", key="confirm_password_input")
             st.caption("Recomendación: usa una contraseña de 12+ caracteres, con mayúsculas, minúsculas y números.")
         
         col_ok, col_cancel = st.columns(2)
@@ -193,6 +205,7 @@ def show_profile_update() -> None:
         cancel = col_cancel.form_submit_button("Cancelar", use_container_width=True)
         if cancel:
             st.session_state.show_profile_update = False
+            st.session_state.show_password_change = False
             st.rerun()
         if submitted:
             try:
@@ -203,7 +216,7 @@ def show_profile_update() -> None:
                         return
                     
                     # Validar contraseñas si se está actualizando
-                    if cambiar_password:
+                    if st.session_state.get('show_password_change', False):
                         if not nueva_password or not confirmar_password:
                             st.error("Debes ingresar y confirmar la nueva contraseña.")
                             return
@@ -219,12 +232,13 @@ def show_profile_update() -> None:
                     success = auth_manager.update_profile(
                         nombre=nuevo_nombre,
                         email=nuevo_email,
-                        password=nueva_password if cambiar_password else None
+                        password=nueva_password if st.session_state.get('show_password_change', False) else None
                     )
                     
                     if success:
                         st.success("Perfil actualizado exitosamente")
                         st.session_state.show_profile_update = False
+                        st.session_state.show_password_change = False
                         st.rerun()
                     else:
                         st.error("No se pudo actualizar el perfil")
