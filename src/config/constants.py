@@ -27,7 +27,7 @@ AVANCE_FIJO = 30  # Avance fijo para cálculos
 # Constantes para factor y ajustes de ancho
 FACTOR_ANCHO_MANGAS = 2  # Factor de multiplicación para el ancho en mangas
 INCREMENTO_ANCHO_MANGAS = 20  # Incremento en mm para el ancho en mangas
-INCREMENTO_ANCHO_TINTAS = 20  # Incremento de ancho para productos con tintas
+INCREMENTO_ANCHO_TINTAS = 14  # Incremento de ancho para productos con tintas (guías)
 INCREMENTO_ANCHO_SIN_TINTAS = 10  # Incremento de ancho para productos sin tintas
 
 # Constantes para cálculos de costos
