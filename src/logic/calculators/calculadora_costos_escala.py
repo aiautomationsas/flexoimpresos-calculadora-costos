@@ -511,9 +511,15 @@ Cálculo:
             print(f"Error en cálculo de plancha: {str(e)}")
             return 0
 
-    def calcular_valor_troquel(self, datos: DatosEscala, es_manga: bool = False, tipo_grafado_id: Optional[int] = None) -> float: # Added tipo_grafado_id
+    def calcular_valor_troquel(self, datos: DatosEscala, es_manga: bool = False, tipo_grafado_id: Optional[int] = None, repeticiones: Optional[int] = None) -> float: # Added tipo_grafado_id and repeticiones
         """
         Calcula el valor del troquel según la fórmula del código original
+        
+        Args:
+            datos: Datos de la escala
+            es_manga: Si es manga o etiqueta
+            tipo_grafado_id: ID del tipo de grafado
+            repeticiones: Número de repeticiones (opcional, si no se proporciona se calcula automáticamente)
         """
         try:
             # Constantes
@@ -522,19 +528,21 @@ Cálculo:
             
             # Calcular valor base
             perimetro = (datos.ancho + datos.avance) * 2
-            calculadora = self._get_calculadora_desperdicios(es_manga)
-            repeticiones = None
             
-            # Si el usuario ha seleccionado una unidad específica, calcular las repeticiones óptimas para esa unidad
-            if getattr(datos, 'unidad_montaje_dientes', None) is not None:
-                # Usar el nuevo método para obtener la mejor opción para esta unidad específica
-                mejor_opcion = calculadora.obtener_mejor_opcion_para_unidad(datos.avance, datos.unidad_montaje_dientes)
-                if mejor_opcion:
-                    repeticiones = mejor_opcion.repeticiones
-            
-            # Si no se ha seleccionado unidad o no se encontró una opción válida, usar la mejor opción global
+            # Si no se proporcionan repeticiones, calcularlas automáticamente
             if repeticiones is None:
-                repeticiones = calculadora.obtener_mejor_opcion(datos.avance).repeticiones
+                calculadora = self._get_calculadora_desperdicios(es_manga)
+                
+                # Si el usuario ha seleccionado una unidad específica, calcular las repeticiones óptimas para esa unidad
+                if getattr(datos, 'unidad_montaje_dientes', None) is not None:
+                    # Usar el nuevo método para obtener la mejor opción para esta unidad específica
+                    mejor_opcion = calculadora.obtener_mejor_opcion_para_unidad(datos.avance, datos.unidad_montaje_dientes)
+                    if mejor_opcion:
+                        repeticiones = mejor_opcion.repeticiones
+                
+                # Si no se ha seleccionado unidad o no se encontró una opción válida, usar la mejor opción global
+                if repeticiones is None:
+                    repeticiones = calculadora.obtener_mejor_opcion(datos.avance).repeticiones
             valor_base = perimetro * datos.pistas * repeticiones * 100  # valor_mm = 100
             valor_calculado = max(VALOR_MINIMO, valor_base)
 
@@ -844,7 +852,8 @@ Cálculo:
         valor_acabado: float,
         es_manga: bool = False,
         tipo_grafado_id: Optional[int] = None, # Added tipo_grafado_id here
-        acabado_id: Optional[int] = None # Añadido acabado_id
+        acabado_id: Optional[int] = None, # Añadido acabado_id
+        repeticiones: Optional[int] = None # Añadido repeticiones
     ) -> List[Dict]:
         """
         Calcula los costos por escala para un producto.
@@ -859,6 +868,7 @@ Cálculo:
             es_manga (bool): True si es manga, False si es etiqueta
             tipo_grafado_id (Optional[int]): ID del tipo de grafado
             acabado_id (Optional[int]): ID del acabado seleccionado
+            repeticiones (Optional[int]): Número de repeticiones para el cálculo del troquel
 
         Returns:
             List[Dict]: Lista de resultados por cada escala, con los siguientes campos:
@@ -911,8 +921,8 @@ Cálculo:
             if valor_plancha is None:
                 valor_plancha = self.calcular_valor_plancha(datos, num_tintas_interno, es_manga, q3, s3)
             if valor_troquel is None:
-                # Pass tipo_grafado_id to the internal method call
-                valor_troquel = self.calcular_valor_troquel(datos, es_manga, tipo_grafado_id) # Pass the ID
+                # Pass tipo_grafado_id and repeticiones to the internal method call
+                valor_troquel = self.calcular_valor_troquel(datos, es_manga, tipo_grafado_id, repeticiones) # Pass the ID and repeticiones
             # Ensure they are floats after potential calculation or if passed as 0 initially
            
             valor_troquel = float(valor_troquel) if valor_troquel is not None else 0.0

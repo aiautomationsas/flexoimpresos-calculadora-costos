@@ -361,11 +361,30 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
         # --- Calcular Mejor Opción de Desperdicio UNA VEZ ---
         calc_lito = CalculadoraLitografia() # Necesitamos instancia para obtener mejor opción
         try:
-            mejor_opcion = calc_lito.obtener_mejor_opcion_desperdicio(datos_escala, es_manga)
-            if mejor_opcion is None:
-                st.error("No se encontró una configuración de cilindro/repetición válida para este avance.")
-                return None
-            print(f"\nMejor Opción Desperdicio: Dientes={mejor_opcion.dientes}, Reps={mejor_opcion.repeticiones}, Medida={mejor_opcion.medida_mm}, Desp={mejor_opcion.desperdicio:.4f}")
+            # Si el usuario ha seleccionado una unidad específica, usar esa unidad
+            if form_data.get('unidad_montaje_dientes') is not None:
+                print(f"\n=== USANDO UNIDAD ESPECÍFICA DEL USUARIO ===")
+                print(f"Unidad seleccionada por el usuario: {form_data.get('unidad_montaje_dientes')} dientes")
+                
+                # Obtener la mejor opción para la unidad específica usando la calculadora de desperdicios
+                from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdicio
+                calc_desp = CalculadoraDesperdicio(es_manga=es_manga)
+                mejor_opcion = calc_desp.obtener_mejor_opcion_para_unidad(
+                    datos_escala.avance, 
+                    form_data.get('unidad_montaje_dientes')
+                )
+                if mejor_opcion is None:
+                    st.error(f"No se encontró una configuración válida para la unidad de {form_data.get('unidad_montaje_dientes')} dientes.")
+                    return None
+                print(f"Mejor opción para unidad específica: Dientes={mejor_opcion.dientes}, Reps={mejor_opcion.repeticiones}, Medida={mejor_opcion.medida_mm}, Desp={mejor_opcion.desperdicio:.4f}")
+            else:
+                # Usar la mejor opción global
+                print(f"\n=== USANDO MEJOR OPCIÓN GLOBAL ===")
+                mejor_opcion = calc_lito.obtener_mejor_opcion_desperdicio(datos_escala, es_manga)
+                if mejor_opcion is None:
+                    st.error("No se encontró una configuración de cilindro/repetición válida para este avance.")
+                    return None
+                print(f"Mejor opción global: Dientes={mejor_opcion.dientes}, Reps={mejor_opcion.repeticiones}, Medida={mejor_opcion.medida_mm}, Desp={mejor_opcion.desperdicio:.4f}")
         except ValueError as e_desp:
             st.error(f"Error determinando la mejor opción de desperdicio: {e_desp}")
             return None
@@ -540,7 +559,8 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             valor_acabado=datos_calculo_persistir['valor_acabado'],
             es_manga=es_manga,
             tipo_grafado_id=datos_calculo_persistir['tipo_grafado_id'], 
-            acabado_id=acabado_id
+            acabado_id=acabado_id,
+            repeticiones=mejor_opcion.repeticiones  # Pasar las repeticiones calculadas
         )
         
         if resultados:
