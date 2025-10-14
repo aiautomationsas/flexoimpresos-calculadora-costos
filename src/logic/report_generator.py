@@ -145,7 +145,8 @@ def generar_informe_tecnico_markdown(
 
         # --- Datos del Cálculo (Usando calculos_guardados) ---
         # NOTA: Se recalculará la unidad usando la lógica corregida en lugar de usar datos cacheados
-        dientes = calculos_guardados.get('unidad_z_dientes', 'N/A')
+        # IGNORAR completamente los datos cacheados de unidad_z_dientes para forzar recálculo
+        dientes = 'N/A'  # Forzar recálculo siempre
         valor_material = calculos_guardados.get('valor_material', 0.0)
         valor_acabado = calculos_guardados.get('valor_acabado', 0.0)
         
