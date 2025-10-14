@@ -81,7 +81,7 @@ class CalculadoraDesperdicio:
             return 999.9999
             
         # Calcular el desperdicio
-        return abs(medida_mm - avance_efectivo * repeticiones)
+        return abs(medida_mm - avance_efectivo * repeticiones) / repeticiones
 
     def _filtrar_opciones_validas(self, opciones: List[OpcionDesperdicio]) -> List[OpcionDesperdicio]:
         """
@@ -120,13 +120,14 @@ class CalculadoraDesperdicio:
             dientes = row['Dientes']
             mm = row['mm']
             
-            # Probar para repeticiones de 1 a 20 (como en Excel)
+            # Probar todas las repeticiones posibles (de 1 a MAX_REPETICIONES)
             for rep in range(1, self.MAX_REPETICIONES + 1):
                 ancho_total = self._calcular_ancho_total(avance_mm, rep)
                 
-                # Aquí eliminamos la validación del ancho total para una sola repetición
-                # Si el avance es mayor que el ancho de la máquina, al menos debemos permitir una repetición
-                if rep == 1 or self._validar_ancho_total(ancho_total):
+                # Para ETIQUETAS: Validar que el ancho total no exceda el ancho de máquina
+                # Para MANGAS: No validar ancho total (las repeticiones son en la circunferencia)
+                # Siempre permitir al menos 1 repetición incluso si excede
+                if rep == 1 or self.es_manga or self._validar_ancho_total(ancho_total):
                     desperdicio = self._calcular_desperdicio_individual(mm, avance_mm, rep)
                     if desperdicio < 999:
                         opciones.append(OpcionDesperdicio(

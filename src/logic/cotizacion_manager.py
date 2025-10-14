@@ -318,33 +318,9 @@ class CotizacionManager:
                 'numero_pistas', 'num_paquetes_rollos', 'tipo_producto_id',
                 'tipo_grafado_id'
             ]
-            
-            # Recalcular unidad_z_dientes usando la lógica corregida
-            unidad_z_dientes_corregida = 0.0
-            try:
-                from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdicio
-                avance_calculado = datos_calculo.get('avance', cotizacion_model.avance)
-                es_manga = cotizacion_model.es_manga if hasattr(cotizacion_model, 'es_manga') else False
-                
-                if avance_calculado and avance_calculado > 0:
-                    calc_desp = CalculadoraDesperdicio(es_manga=es_manga)
-                    mejor_opcion = calc_desp.obtener_mejor_opcion(avance_calculado)
-                    if mejor_opcion:
-                        unidad_z_dientes_corregida = float(mejor_opcion.dientes)
-                        print(f"Unidad corregida calculada: {unidad_z_dientes_corregida} dientes para avance {avance_calculado}mm")
-            except Exception as e:
-                print(f"Advertencia: no se pudo recalcular unidad_z_dientes: {e}")
-                unidad_z_dientes_corregida = datos_calculo.get('unidad_z_dientes', 0.0)
-            
             for campo in campos_calculo_requeridos:
                 if campo in datos_calculo:
                     valor_calculo = datos_calculo[campo]
-                    
-                    # Usar unidad recalculada en lugar de la del diccionario
-                    if campo == 'unidad_z_dientes':
-                        valor_calculo = unidad_z_dientes_corregida
-                        print(f"  Usando unidad corregida: {valor_calculo} dientes")
-                    
                     # Ajuste especial para valor_plancha
                     if campo == 'valor_plancha_para_calculo':
                         datos_bd['valor_plancha'] = float(valor_calculo) if valor_calculo is not None else 0.0
@@ -716,23 +692,6 @@ class CotizacionManager:
                 print(f"valor_troquel a guardar: {valor_troquel_a_guardar}")
                 print(f"tipo de valor_troquel: {type(valor_troquel_a_guardar)}")
                 
-                # Recalcular unidad_z_dientes usando la lógica corregida
-                unidad_z_dientes_corregida = 0.0
-                try:
-                    from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdicio
-                    avance_calculado = datos_calculo.get('avance_calculado', cotizacion_model.avance)
-                    es_manga = cotizacion_model.es_manga if hasattr(cotizacion_model, 'es_manga') else False
-                    
-                    if avance_calculado and avance_calculado > 0:
-                        calc_desp = CalculadoraDesperdicio(es_manga=es_manga)
-                        mejor_opcion = calc_desp.obtener_mejor_opcion(avance_calculado)
-                        if mejor_opcion:
-                            unidad_z_dientes_corregida = float(mejor_opcion.dientes)
-                            print(f"Unidad corregida calculada: {unidad_z_dientes_corregida} dientes para avance {avance_calculado}mm")
-                except Exception as e:
-                    print(f"Advertencia: no se pudo recalcular unidad_z_dientes: {e}")
-                    unidad_z_dientes_corregida = datos_calculo.get('unidad_z_dientes', 0.0)
-
                 success_calculos = self.db.guardar_calculos_escala(
                     cotizacion_id=cotizacion_id,
                     valor_material=datos_calculo.get('valor_material', 0.0),
@@ -749,7 +708,7 @@ class CotizacionManager:
                     tipo_producto_id=datos_calculo.get('tipo_producto_id', cotizacion_model.tipo_producto_id),
                     tipo_grafado_id=datos_calculo.get('tipo_grafado_id', cotizacion_model.tipo_grafado_id),
                     valor_acabado=datos_calculo.get('valor_acabado', 0.0),
-                    unidad_z_dientes=unidad_z_dientes_corregida,  # Usar unidad recalculada con lógica corregida
+                    unidad_z_dientes=datos_calculo.get('unidad_z_dientes', 0.0),
                     altura_grafado=datos_calculo.get('altura_grafado', cotizacion_model.altura_grafado),
                     valor_plancha_separado=datos_calculo.get('valor_plancha_separado', cotizacion_model.valor_plancha_separado),
                     parametros_especiales=datos_calculo.get('parametros_especiales')
