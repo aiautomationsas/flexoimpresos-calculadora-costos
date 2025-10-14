@@ -206,40 +206,20 @@ def generar_informe_tecnico_markdown(
 
         # Obtener desperdicio de la unidad (mm) usando la lógica corregida
         desperdicio_unidad = 0.0
-        dientes_calculados = dientes  # Valor por defecto
+        dientes_calculados = 'N/A'  # Valor por defecto
+        
+        # Siempre recalcular usando la lógica corregida (ignorar datos cacheados)
         try:
-            unidad_dientes_sel = None
-            try:
-                unidad_dientes_sel = float(dientes) if dientes not in (None, 'N/A', '') else None
-            except Exception:
-                unidad_dientes_sel = None
-
-            # Usar la nueva lógica corregida para recalcular la unidad de montaje
             if avance and avance > 0:
                 calc_desp = CalculadoraDesperdicio(es_manga=es_manga)
+                mejor_opcion = calc_desp.obtener_mejor_opcion(avance)
                 
-                # Obtener la mejor opción automática primero (lógica corregida de mayo 2025)
-                mejor_opcion_automatica = calc_desp.obtener_mejor_opcion(avance)
-                
-                if mejor_opcion_automatica:
-                    # Si el usuario eligió unidad específica, verificar si es válida
-                    if unidad_dientes_sel is not None:
-                        opcion_unidad = calc_desp.obtener_mejor_opcion_para_unidad(avance, unidad_dientes_sel)
-                        if opcion_unidad and opcion_unidad.ancho_total <= 325 and opcion_unidad.desperdicio < mejor_opcion_automatica.desperdicio * 2:
-                            # Usar la unidad seleccionada solo si es válida, respeta límites y tiene desperdicio razonable
-                            desperdicio_unidad = float(opcion_unidad.desperdicio)
-                            dientes_calculados = unidad_dientes_sel
-                        else:
-                            # Si la unidad seleccionada no es válida, usar la mejor opción automática
-                            desperdicio_unidad = float(mejor_opcion_automatica.desperdicio)
-                            dientes_calculados = float(mejor_opcion_automatica.dientes)
-                    else:
-                        # Usar la mejor opción automática (lógica corregida de mayo 2025)
-                        desperdicio_unidad = float(mejor_opcion_automatica.desperdicio)
-                        dientes_calculados = float(mejor_opcion_automatica.dientes)
+                if mejor_opcion:
+                    desperdicio_unidad = float(mejor_opcion.desperdicio)
+                    dientes_calculados = float(mejor_opcion.dientes)
                         
         except Exception as e_desp:
-            print(f"Advertencia: no se pudo obtener/calcular el desperdicio de la unidad para el informe técnico: {e_desp}")
+            print(f"Advertencia: no se pudo calcular el desperdicio de la unidad para el informe técnico: {e_desp}")
             desperdicio_unidad = 0.0
 
         # Gap al avance total = Gap base (2.6mm en etiquetas, 0mm en mangas) + desperdicio por unidad
@@ -248,31 +228,12 @@ def generar_informe_tecnico_markdown(
         # Obtener número de repeticiones usando la lógica corregida
         repeticiones_unidad = None
         try:
-            if avance and avance > 0:
-                if 'calc_desp' not in locals():
-                    calc_desp = CalculadoraDesperdicio(es_manga=es_manga)
-                
-                # Usar la misma lógica que para el desperdicio
-                unidad_dientes_sel = None
-                try:
-                    unidad_dientes_sel = float(dientes_calculados) if dientes_calculados not in (None, 'N/A', '') else None
-                except Exception:
-                    unidad_dientes_sel = None
-                    
-                if unidad_dientes_sel is not None:
-                    # Usar el nuevo método para obtener la mejor opción para esta unidad específica
-                    opcion_unidad = calc_desp.obtener_mejor_opcion_para_unidad(avance, unidad_dientes_sel)
-                    if opcion_unidad:
-                        repeticiones_unidad = int(opcion_unidad.repeticiones)
-                        
-                if repeticiones_unidad is None:
-                    # Fallback: mejor opción global
-                    mejor_opcion = calc_desp.obtener_mejor_opcion(avance)
-                    if mejor_opcion:
-                        repeticiones_unidad = int(mejor_opcion.repeticiones)
+            if avance and avance > 0 and 'calc_desp' in locals():
+                # Usar la misma mejor opción ya calculada
+                repeticiones_unidad = int(mejor_opcion.repeticiones)
                         
         except Exception as e_rep:
-            print(f"Advertencia: no se pudo obtener/calcular las repeticiones para el informe técnico: {e_rep}")
+            print(f"Advertencia: no se pudo obtener las repeticiones para el informe técnico: {e_rep}")
             repeticiones_unidad = None
 
         # Formato para plancha separada
