@@ -575,6 +575,12 @@ def _mostrar_opciones_adicionales(es_manga: bool, datos_cargados: Optional[Dict]
         print(f"Valor en session_state: {st.session_state.get('tiene_troquel')}")
         print(f"Convertido a booleano: {st.session_state.get('tiene_troquel') == 'Sí'}")
 
+        # Limpiar unidad de montaje si no hay troquel
+        if st.session_state.get("tiene_troquel") == "No":
+            if 'unidad_montaje_dientes' in st.session_state:
+                del st.session_state['unidad_montaje_dientes']
+                print("Limpieza: unidad_montaje_dientes eliminada porque no hay troquel")
+        
         # Si el usuario indica que sí existe troquel, permitir elegir la unidad de montaje
         if st.session_state.get("tiene_troquel") == "Sí":
             avance_actual = st.session_state.get("avance")
