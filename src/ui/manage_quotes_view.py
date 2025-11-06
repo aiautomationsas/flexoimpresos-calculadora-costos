@@ -627,6 +627,12 @@ def _mostrar_editor_inline():
                     data = response.data[0]
                     numero_cotizacion = data.get('numero_cotizacion', 'N/A')
                     
+                    # DEBUG TEMPORAL
+                    print(f"🔍 DEBUG: Datos obtenidos de la BD:")
+                    print(f"   - ID buscado: {cotizacion_id}")
+                    print(f"   - Data completa: {data}")
+                    print(f"   - numero_cotizacion extraído: {numero_cotizacion}")
+                    
                     # Extraer nombre del cliente del objeto anidado
                     if data.get('cliente') and isinstance(data['cliente'], dict):
                         cliente_nombre = data['cliente'].get('nombre', 'N/A')
@@ -634,8 +640,13 @@ def _mostrar_editor_inline():
                     # Extraer referencia del objeto anidado
                     if data.get('referencia_cliente') and isinstance(data['referencia_cliente'], dict):
                         referencia = data['referencia_cliente'].get('referencia_descripcion', 'N/A')
+                else:
+                    print(f"🔍 DEBUG: No se obtuvieron datos de la BD para ID {cotizacion_id}")
+                    print(f"   - Response: {response}")
         except Exception as e:
             print(f"Error obteniendo número de cotización: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Configurar modo edición en session_state PRIMERO
     st.session_state['modo_edicion'] = True
