@@ -14,15 +14,41 @@ def show_manage_quotes_ui():
     """Muestra la vista para gestionar (ver y modificar) cotizaciones."""
     st.title("Gestión de Cotizaciones")
     
-    # SOLUCIÓN STREAMLIT CLOUD: Modo inline
-    st.info("💡 Para editar una cotización, use el selector 'Acciones' debajo de la tabla")
+    # SOLUCIÓN STREAMLIT CLOUD: Detectar si se activó edición
+    if st.session_state.get('usar_tabs_quotes', False):
+        cotizacion_id = st.session_state.get('cotizacion_seleccionada_editar')
+        es_recotizacion = st.session_state.get('es_recotizacion', False)
+        
+        st.success(f"✅ Cotización #{cotizacion_id} lista para {'recotizar' if es_recotizacion else 'editar'}")
+        st.info("📋 La cotización se cargará en la calculadora. Click abajo para continuar:")
+        
+        # Configurar modo edición para la calculadora
+        st.session_state['modo_edicion'] = True
+        st.session_state['cotizacion_id_editar'] = cotizacion_id
+        st.session_state['datos_cotizacion_editar'] = None
+        
+        if es_recotizacion:
+            st.session_state['recotizacion_info'] = {'id': cotizacion_id}
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🧮 Abrir en Calculadora", type="primary", use_container_width=True):
+                st.session_state['current_view'] = 'calculator'
+                st.session_state.usar_tabs_quotes = False  # Limpiar flag
+                st.rerun()
+        
+        with col2:
+            if st.button("❌ Cancelar", use_container_width=True):
+                st.session_state.usar_tabs_quotes = False
+                st.session_state.modo_edicion = False
+                st.session_state.cotizacion_id_editar = None
+                st.rerun()
+        
+        st.divider()
     
-    # DEBUG: Información de estado
-    with st.expander("🔧 Debug - Estado de Edición", expanded=False):
-        st.write(f"**modo_edicion:** `{st.session_state.get('modo_edicion', False)}`")
-        st.write(f"**cotizacion_id_editar:** `{st.session_state.get('cotizacion_id_editar', 'None')}`")
-        st.write(f"**current_view:** `{st.session_state.get('current_view', 'None')}`")
-        st.write(f"**Método:** Inline (sin navegación)")
+    # Mensaje informativo
+    if not st.session_state.get('usar_tabs_quotes', False):
+        st.info("💡 Seleccione una cotización de la tabla y luego elija una acción")
 
     if 'db' not in st.session_state:
         st.error("Error: La conexión a la base de datos no está inicializada.")
@@ -382,15 +408,15 @@ def show_manage_quotes_ui():
 
                 cols_accion_display = st.columns(2)
 
-                # --- Botón Editar (SOLUCIÓN CLOUD: Inline) ---
+                # --- SOLUCIÓN DEFINITIVA: Botón simple que activa modo tabs ---
                 with cols_accion_display[0]:
                     st.write("**Editar Cotización:**")
                     
-                    button_label = f"✏️ Ir a Editar #{selected_quote_data[num_col_acc]}"
+                    button_label = f"✏️ Editar #{selected_quote_data[num_col_acc]}"
                     if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
-                         button_label = f"🔁 Ir a Recotizar #{selected_quote_data[num_col_acc]}"
+                         button_label = f"🔁 Recotizar #{selected_quote_data[num_col_acc]}"
                     
-                    # SOLUCIÓN DEFINITIVA: Link directo que actualiza session_state
+                    # Botón que solo activa el flag para mostrar el editor inline
                     if st.button(
                         button_label,
                         key=f"edit_btn_{selected_cotizacion_id_accion}",
@@ -409,39 +435,14 @@ def show_manage_quotes_ui():
                                 can_edit = False
                         
                         if can_edit:
-                            # Configurar edición
+                            # Simplemente activar flag y configurar ID
+                            st.session_state.usar_tabs_quotes = True
+                            st.session_state.cotizacion_seleccionada_editar = selected_cotizacion_id_accion
+                            
                             if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
-                                st.session_state['recotizacion_info'] = {'id': selected_cotizacion_id_accion}
+                                st.session_state.es_recotizacion = True
                             else:
-                                if 'recotizacion_info' in st.session_state:
-                                    del st.session_state['recotizacion_info']
-                            
-                            # Usar notación de diccionario para asegurar que se guarde
-                            st.session_state['modo_edicion'] = True
-                            st.session_state['cotizacion_id_editar'] = selected_cotizacion_id_accion
-                            st.session_state['datos_cotizacion_editar'] = None
-                            st.session_state['current_view'] = 'calculator'
-                            
-                            print(f"DEBUG BTN: Configurado modo_edicion={st.session_state['modo_edicion']}, id={st.session_state['cotizacion_id_editar']}")
-                            
-                            try:
-                                SessionManager.reset_calculator_widgets()
-                            except:
-                                pass
-                            
-                            # NO mostrar mensaje aquí, hacerlo después del rerun
-                    
-                    # Mostrar estado actual FUERA del botón
-                    if st.session_state.get('modo_edicion') and st.session_state.get('cotizacion_id_editar') == selected_cotizacion_id_accion:
-                        st.success(f"✅ Cotización #{selected_quote_data[num_col_acc]} lista para editar")
-                        
-                        # Botón para navegar manualmente
-                        if st.button("🧮 Ir a Calculadora", key=f"goto_calc_{selected_cotizacion_id_accion}", type="primary"):
-                            # Forzar cambio de vista
-                            st.session_state['current_view'] = 'calculator'
-                            st.rerun()
-                        
-                        st.caption("O usa el menú lateral → 🧮 Calculadora")
+                                st.session_state.es_recotizacion = False
                     
                     if False:  # Código viejo deshabilitado
                         edit_submitted = False
