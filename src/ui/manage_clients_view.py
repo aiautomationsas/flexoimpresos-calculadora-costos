@@ -11,14 +11,38 @@ def show_manage_clients():
     """Muestra la vista para gestionar clientes."""
     st.title("Gestión de Clientes")
 
+    # Usar tabs para navegación (solución compatible con Streamlit Cloud)
+    if st.session_state.get('usar_tabs_clientes', True):  # Por defecto usar tabs
+        _show_manage_clients_with_tabs()
+    else:
+        # Método original con navegación por vistas
+        _show_manage_clients_original()
+
+
+def _show_manage_clients_with_tabs():
+    """Versión alternativa usando tabs para evitar problemas de navegación."""
+    tab1, tab2 = st.tabs(["📋 Lista de Clientes", "➕ Crear Nuevo Cliente"])
+    
+    with tab1:
+        _mostrar_lista_clientes()
+    
+    with tab2:
+        _mostrar_formulario_crear_cliente()
+
+
+def _show_manage_clients_original():
+    """Versión original con botón que cambia de vista."""
     # Botón para crear nuevo cliente
-    if st.button("➕ Crear Nuevo Cliente"):
-        # Cambiar la vista en session_state para que app.py la maneje
+    if st.button("➕ Crear Nuevo Cliente", key="btn_crear_nuevo_cliente", type="primary"):
         st.session_state.current_view = 'crear_cliente'
         st.rerun()
-        # No retornar aquí directamente, dejar que el flujo principal maneje la vista
 
     st.divider()
+    _mostrar_lista_clientes()
+
+
+def _mostrar_lista_clientes():
+    """Muestra la lista de clientes existentes."""
     st.subheader("Clientes Existentes")
 
     if 'db' not in st.session_state:
@@ -92,15 +116,109 @@ def show_manage_clients():
         st.error(f"Error al cargar los clientes: {str(e)}")
         traceback.print_exc()
 
+
+def _mostrar_formulario_crear_cliente():
+    """Muestra el formulario inline para crear un nuevo cliente (versión tabs)."""
+    st.write("### Información del Cliente")
+    
+    # Formulario de creación de cliente
+    with st.form("crear_cliente_form_tabs"):
+        # Campos del formulario
+        nit = st.text_input("NIT/CC *",
+                           help="Identificador único del cliente (solo números)",
+                           key="create_client_nit_tabs")
+        nombre = st.text_input("Nombre del Cliente *",
+                             help="Nombre completo o razón social",
+                             key="create_client_nombre_tabs")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            contacto = st.text_input("Persona de Contacto",
+                                   help="Nombre de la persona de contacto",
+                                   key="create_client_contacto_tabs")
+            telefono = st.text_input("Teléfono",
+                                   help="Número de teléfono del cliente",
+                                   key="create_client_telefono_tabs")
+
+        with col2:
+            email = st.text_input("Correo Electrónico",
+                                help="Correo electrónico de contacto",
+                                key="create_client_email_tabs")
+
+        # Botón de submit
+        submitted = st.form_submit_button("Crear Cliente", type="primary")
+
+        if submitted:
+            _procesar_creacion_cliente(nit, nombre, contacto, telefono, email)
+
+
+def _procesar_creacion_cliente(nit, nombre, contacto, telefono, email):
+    """Procesa la creación de un nuevo cliente."""
+    error_creacion = False
+    
+    # Validaciones básicas
+    if not nit or not nombre:
+        st.error("Los campos NIT y Nombre son obligatorios.")
+        error_creacion = True
+
+    # Validar que el NIT sea numérico
+    if not error_creacion and not nit.isdigit():
+        st.error("El NIT debe contener solo números.")
+        error_creacion = True
+
+    # Validar formato de correo si se proporciona
+    if not error_creacion and email and '@' not in email:
+        st.error("Por favor ingrese un correo electrónico válido.")
+        error_creacion = True
+
+    if not error_creacion:
+        try:
+            # Crear objeto Cliente
+            nuevo_cliente = Cliente(
+                id=None,
+                codigo=nit,
+                nombre=nombre,
+                persona_contacto=contacto if contacto else None,
+                correo_electronico=email if email else None,
+                telefono=telefono if telefono else None
+            )
+
+            # Intentar crear el cliente
+            if 'db' not in st.session_state:
+                st.error("Error crítico: Conexión DB no disponible.")
+                return
+
+            db = st.session_state.db
+            cliente_creado = db.crear_cliente(nuevo_cliente)
+
+            if cliente_creado:
+                st.success(f"¡Cliente '{nombre}' creado exitosamente!")
+                st.balloons()
+                time.sleep(1.5)
+                st.rerun()
+            else:
+                st.error("No se pudo crear el cliente. Por favor, intente nuevamente.")
+
+        except Exception as e:
+            error_msg = str(e)
+            if "duplicate key value violates unique constraint" in error_msg.lower() and 'clientes_codigo_key' in error_msg.lower():
+                st.error(f"Error: Ya existe un cliente con el NIT {nit}.")
+            elif "check constraint" in error_msg.lower():
+                st.error(f"Error de validación en la base de datos: {error_msg}")
+            else:
+                st.error(f"Error al crear el cliente: {error_msg}")
+            
+            traceback.print_exc()
+
+
 def show_create_client():
     """Muestra el formulario para crear un nuevo cliente."""
     st.title("Crear Nuevo Cliente")
 
     # Botón para volver a la lista de clientes
-    if st.button("← Volver a la lista de clientes"):
+    if st.button("← Volver a la lista de clientes", key="btn_volver_clientes"):
         st.session_state.current_view = 'manage_clients'
         st.rerun()
-        # No retornar, dejar que el flujo principal maneje la vista
 
     # Formulario de creación de cliente
     with st.form("crear_cliente_form"):
