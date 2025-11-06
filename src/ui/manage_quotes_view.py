@@ -618,38 +618,22 @@ def _mostrar_editor_inline():
         try:
             db_manager = st.session_state.get('db')
             if db_manager:
-                # Obtener la información básica de la cotización
-                response = db_manager.supabase.from_('cotizaciones').select(
-                    'numero_cotizacion, cliente_id, referencia_cliente_id'
-                ).eq('id', cotizacion_id).single().execute()
+                # Usar el mismo RPC que se usa en la lista principal para obtener datos completos
+                response = db_manager.supabase.rpc('get_visible_cotizaciones_for_dashboard').execute()
                 
                 if response and response.data:
-                    data = response.data
-                    numero_cotizacion = data.get('numero_cotizacion', 'N/A')
-                    cliente_id = data.get('cliente_id')
-                    ref_id = data.get('referencia_cliente_id')
+                    # Buscar la cotización específica por ID
+                    cotizacion_data = next((c for c in response.data if c.get('id') == cotizacion_id), None)
                     
-                    print(f"🔍 DEBUG: Cotización obtenida - Número: {numero_cotizacion}, Cliente ID: {cliente_id}")
-                    
-                    # Obtener nombre del cliente
-                    if cliente_id:
-                        try:
-                            cliente_resp = db_manager.supabase.from_('clientes').select('nombre').eq('id', cliente_id).single().execute()
-                            if cliente_resp and cliente_resp.data:
-                                cliente_nombre = cliente_resp.data.get('nombre', 'N/A')
-                        except Exception as e_cliente:
-                            print(f"Error obteniendo cliente: {e_cliente}")
-                    
-                    # Obtener referencia
-                    if ref_id:
-                        try:
-                            ref_resp = db_manager.supabase.from_('referencias_cliente').select('referencia_descripcion').eq('id', ref_id).single().execute()
-                            if ref_resp and ref_resp.data:
-                                referencia = ref_resp.data.get('referencia_descripcion', 'N/A')
-                        except Exception as e_ref:
-                            print(f"Error obteniendo referencia: {e_ref}")
+                    if cotizacion_data:
+                        numero_cotizacion = cotizacion_data.get('numero_cotizacion', 'N/A')
+                        cliente_nombre = cotizacion_data.get('cliente_nombre', 'N/A')
+                        referencia = cotizacion_data.get('referencia', 'N/A')
+                        print(f"🔍 DEBUG: Cotización obtenida - #{numero_cotizacion}, Cliente: {cliente_nombre}")
+                    else:
+                        print(f"🔍 DEBUG: No se encontró la cotización ID {cotizacion_id} en los datos del RPC")
                 else:
-                    print(f"🔍 DEBUG: No se obtuvieron datos de la BD para ID {cotizacion_id}")
+                    print(f"🔍 DEBUG: No se obtuvieron datos del RPC")
         except Exception as e:
             print(f"Error obteniendo información de cotización: {e}")
             import traceback
