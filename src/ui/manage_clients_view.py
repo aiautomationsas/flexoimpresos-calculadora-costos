@@ -10,18 +10,9 @@ from src.data.models import Cliente # Importar el modelo Cliente
 def show_manage_clients():
     """Muestra la vista para gestionar clientes."""
     st.title("Gestión de Clientes")
-    
-    # DEBUG: Mostrar información en la UI
-    with st.expander("🔧 Debug Info (click para expandir)", expanded=False):
-        st.write(f"**Vista actual:** `{st.session_state.get('current_view', 'NO DEFINIDO')}`")
-        st.write(f"**Usuario autenticado:** `{st.session_state.get('authenticated', False)}`")
-        st.write(f"**Rol:** `{st.session_state.get('usuario_rol', 'NO DEFINIDO')}`")
-        st.write(f"**Modo alternativo:** `{st.session_state.get('usar_tabs_clientes', False)}`")
 
-    # SOLUCIÓN ALTERNATIVA: Usar tabs en lugar de cambiar vista
-    # Esto evita problemas con st.rerun() en Streamlit Cloud
+    # Usar tabs para navegación (solución compatible con Streamlit Cloud)
     if st.session_state.get('usar_tabs_clientes', True):  # Por defecto usar tabs
-        st.info("💡 Usando navegación por pestañas (modo alternativo para Streamlit Cloud)")
         _show_manage_clients_with_tabs()
     else:
         # Método original con navegación por vistas
@@ -43,18 +34,7 @@ def _show_manage_clients_original():
     """Versión original con botón que cambia de vista."""
     # Botón para crear nuevo cliente
     if st.button("➕ Crear Nuevo Cliente", key="btn_crear_nuevo_cliente", type="primary"):
-        # Depuración: Imprimir antes del cambio
-        print(f"DEBUG: Botón presionado. Vista actual: {st.session_state.get('current_view')}")
-        
-        # Cambiar la vista en session_state para que app.py la maneje
         st.session_state.current_view = 'crear_cliente'
-        
-        # Depuración: Confirmar cambio
-        print(f"DEBUG: Vista cambiada a: {st.session_state.current_view}")
-        
-        # Mostrar mensaje antes del rerun
-        st.success("⏳ Redirigiendo a crear cliente...")
-        
         st.rerun()
 
     st.divider()
@@ -212,45 +192,31 @@ def _procesar_creacion_cliente(nit, nombre, contacto, telefono, email):
             cliente_creado = db.crear_cliente(nuevo_cliente)
 
             if cliente_creado:
-                st.success(f"✅ ¡Cliente '{nombre}' creado exitosamente!")
+                st.success(f"¡Cliente '{nombre}' creado exitosamente!")
                 st.balloons()
-                time.sleep(2)
+                time.sleep(1.5)
                 st.rerun()
             else:
-                st.error("No se pudo crear el cliente (DB devolvió False o None).")
+                st.error("No se pudo crear el cliente. Por favor, intente nuevamente.")
 
         except Exception as e:
             error_msg = str(e)
             if "duplicate key value violates unique constraint" in error_msg.lower() and 'clientes_codigo_key' in error_msg.lower():
-                st.error(f"❌ Error: Ya existe un cliente con el NIT {nit}.")
+                st.error(f"Error: Ya existe un cliente con el NIT {nit}.")
             elif "check constraint" in error_msg.lower():
-                st.error(f"❌ Error de validación en la base de datos: {error_msg}")
+                st.error(f"Error de validación en la base de datos: {error_msg}")
             else:
-                st.error(f"❌ Error inesperado al crear el cliente: {error_msg}")
-
-            print(f"Error detallado creando cliente: {e}")
+                st.error(f"Error al crear el cliente: {error_msg}")
+            
             traceback.print_exc()
 
 
 def show_create_client():
     """Muestra el formulario para crear un nuevo cliente."""
-    # Depuración: Confirmar que esta función se está llamando
-    print(f"DEBUG: show_create_client() llamada. Vista actual: {st.session_state.get('current_view')}")
-    
     st.title("Crear Nuevo Cliente")
-    
-    # DEBUG: Confirmar visualmente que esta vista se está mostrando
-    st.info("✅ Vista 'Crear Nuevo Cliente' cargada correctamente")
-    
-    # DEBUG: Mostrar información en la UI
-    with st.expander("🔧 Debug Info (click para expandir)", expanded=False):
-        st.write(f"**Vista actual:** `{st.session_state.get('current_view', 'NO DEFINIDO')}`")
-        st.write(f"**Función:** `show_create_client()` está ejecutándose")
-        st.write(f"**DB disponible:** `{('db' in st.session_state)}`")
 
     # Botón para volver a la lista de clientes
     if st.button("← Volver a la lista de clientes", key="btn_volver_clientes"):
-        print(f"DEBUG: Botón volver presionado")
         st.session_state.current_view = 'manage_clients'
         st.rerun()
 

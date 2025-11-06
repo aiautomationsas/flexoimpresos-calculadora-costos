@@ -1554,42 +1554,20 @@ def main():
     # --------------------------------------------
 
     # Mostrar la vista actual
-    current_view = st.session_state.get('current_view', 'calculator') # Obtener vista actual
-    
-    # DEBUG: Mostrar vista actual en el sidebar para depuración
-    with st.sidebar:
-        with st.expander("🔍 Debug - Vista Actual", expanded=False):
-            st.write(f"**current_view:** `{current_view}`")
-            st.write(f"**authenticated:** `{st.session_state.get('authenticated', False)}`")
-            if st.button("🔄 Force Reload", key="force_reload_debug"):
-                st.rerun()
+    current_view = st.session_state.get('current_view', 'calculator')
 
-    # Router de vistas
-    print(f"DEBUG ROUTER: Renderizando vista '{current_view}'")
-    
     if current_view == 'calculator':
         mostrar_calculadora()
     elif current_view == 'quote_results':
         show_quote_results()
     elif current_view == 'manage_quotes':
-        # --- MODIFICACIÓN: Llamar a la función importada --- 
         show_manage_quotes()
-        # --------------------------------------------------
     elif current_view == 'manage_clients':
-        # --- MODIFICACIÓN: Llamar a la función importada --- 
-        print("DEBUG ROUTER: Llamando a show_manage_clients()")
         show_manage_clients()
-        # --------------------------------------------------
     elif current_view == 'crear_cliente':
-        # --- MODIFICACIÓN: Llamar a la función importada --- 
-        print("DEBUG ROUTER: Llamando a show_create_client()")
         show_create_client()
-        # --------------------------------------------------
-    # --- MODIFICACIÓN: Llamar a la función importada --- 
     elif current_view == 'dashboard':
         show_dashboard()
-    # --------------------------------------------------
-    # --- NUEVA OPCIÓN DE MENÚ ---
     elif current_view == 'manage_values':
         show_manage_values()
     elif current_view == 'manage_policies':
@@ -1598,16 +1576,11 @@ def main():
         show_manage_cartera_policies()
     elif current_view == 'manage_commercials':
         show_manage_commercials()
-    # ---------------------------
-    # elif st.session_state.current_view == 'reports': # Ya no se usa directamente
-    #     show_reports()
     else:
         # Si la vista no coincide con ninguna opción, volver a la calculadora
-        st.warning(f"⚠️ Vista desconocida: `{current_view}`. Volviendo a la calculadora.")
-        st.write("**Vistas válidas:** calculator, quote_results, manage_quotes, manage_clients, crear_cliente, dashboard, manage_values, manage_policies, manage_cartera, manage_commercials")
+        st.warning(f"Vista desconocida: {current_view}. Volviendo a la calculadora.")
         st.session_state.current_view = 'calculator'
-        if st.button("🔄 Recargar"):
-            st.rerun()
+        st.rerun()
 
 def show_quote_results():
     """Muestra los resultados de la cotización calculada."""
