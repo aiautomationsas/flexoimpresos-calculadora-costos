@@ -13,6 +13,12 @@ from src.logic.report_generator import generar_informe_tecnico_markdown, markdow
 def show_manage_quotes_ui():
     """Muestra la vista para gestionar (ver y modificar) cotizaciones."""
     st.title("Gestión de Cotizaciones")
+    
+    # DEBUG: Información de estado
+    with st.expander("🔧 Debug - Estado de Edición", expanded=False):
+        st.write(f"**modo_edicion:** `{st.session_state.get('modo_edicion', False)}`")
+        st.write(f"**cotizacion_id_editar:** `{st.session_state.get('cotizacion_id_editar', 'None')}`")
+        st.write(f"**current_view:** `{st.session_state.get('current_view', 'None')}`")
 
     if 'db' not in st.session_state:
         st.error("Error: La conexión a la base de datos no está inicializada.")
@@ -410,11 +416,19 @@ def show_manage_quotes_ui():
                             if 'recotizacion_info' in st.session_state:
                                 del st.session_state['recotizacion_info'] # Limpiar si no es recotización
 
+                        # Configurar modo edición
                         st.session_state.modo_edicion = True
-                        st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion # Clave correcta
-                        st.session_state.datos_cotizacion_editar = None # Limpiar datos viejos para forzar recarga
+                        st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion
+                        st.session_state.datos_cotizacion_editar = None
                         st.session_state.current_view = 'calculator'
-                        SessionManager.reset_calculator_widgets() # Limpiar widgets de calculadora
+                        SessionManager.reset_calculator_widgets()
+                        
+                        # DEBUG
+                        print(f"DEBUG EDIT: Editando cotización ID {selected_cotizacion_id_accion}")
+                        print(f"DEBUG EDIT: modo_edicion = {st.session_state.modo_edicion}")
+                        print(f"DEBUG EDIT: current_view = {st.session_state.current_view}")
+                        
+                        st.success(f"⏳ Cargando cotización #{selected_cotizacion_id_accion} para edición...")
                         st.rerun()
 
                     if disable_edit_button:
