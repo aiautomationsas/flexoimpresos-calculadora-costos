@@ -600,20 +600,7 @@ def _mostrar_editor_inline():
     cotizacion_id = st.session_state.get('cotizacion_id_editar')
     es_recotizacion = st.session_state.get('es_recotizacion', False)
     
-    st.title(f"{'🔁 Recotizar' if es_recotizacion else '✏️ Editar'} Cotización #{cotizacion_id}")
-    
-    # Botón para volver
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        if st.button("← Volver", type="secondary"):
-            st.session_state['mostrar_editor_inline'] = False
-            st.session_state['cotizacion_id_editar'] = None
-            st.session_state['modo_edicion'] = False
-            st.rerun()
-    
-    st.divider()
-    
-    # Configurar modo edición en session_state
+    # Configurar modo edición en session_state PRIMERO
     st.session_state['modo_edicion'] = True
     st.session_state['datos_cotizacion_editar'] = None
     
@@ -625,24 +612,39 @@ def _mostrar_editor_inline():
     except:
         pass
     
-    # Botón grande para abrir en calculadora
-    st.success("✅ Cotización configurada para edición")
-    st.write("### Abrir Editor de Cotización")
-    st.write("La cotización se abrirá en la calculadora donde podrás editarla completamente.")
+    # UI
+    st.title(f"{'🔁 Recotizar' if es_recotizacion else '✏️ Editar'} Cotización #{cotizacion_id}")
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button(
-            "🧮 Abrir Calculadora para Editar",
-            type="primary",
-            use_container_width=True,
-            key="abrir_calc_editor"
-        ):
-            st.session_state['current_view'] = 'calculator'
-            st.rerun()
+    # Botón para cancelar
+    if st.button("❌ Cancelar Edición"):
+        st.session_state['mostrar_editor_inline'] = False
+        st.session_state['cotizacion_id_editar'] = None
+        st.session_state['modo_edicion'] = False
+        st.rerun()
     
     st.divider()
-    st.info("💡 **Alternativa:** También puedes usar el menú lateral izquierdo → **🧮 Cotizador**")
+    
+    # Mensaje principal
+    st.success("✅ Modo de Edición Activado")
+    st.write("### La cotización está lista para editar")
+    
+    # Caja destacada con instrucción
+    st.info("""
+    ### 👉 Siguiente paso:
+    
+    **Haz click en "🧮 Cotizador" en el menú lateral izquierdo**
+    
+    La cotización se cargará automáticamente en la calculadora lista para editar.
+    """)
+    
+    # Información adicional
+    st.write("---")
+    st.write("**Información de la cotización:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Número de Cotización", f"#{cotizacion_id}")
+    with col2:
+        st.metric("Modo", "Recotización" if es_recotizacion else "Edición")
 
 # Definir la función original para mantener compatibilidad
 def show_manage_quotes():
