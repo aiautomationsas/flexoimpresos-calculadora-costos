@@ -387,7 +387,16 @@ def show_manage_quotes_ui():
                     if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
                          button_label = f"🔁 Recotizar #{selected_quote_data[num_col_acc]}"
 
-                    if st.button(button_label, key=edit_button_key, use_container_width=True, disabled=disable_edit_button):
+                    # SOLUCIÓN STREAMLIT CLOUD: Usar form para mejor compatibilidad
+                    with st.form(key=f"form_edit_{selected_cotizacion_id_accion}", clear_on_submit=False):
+                        edit_submitted = st.form_submit_button(
+                            button_label,
+                            use_container_width=True,
+                            disabled=disable_edit_button,
+                            type="primary"
+                        )
+                    
+                    if edit_submitted:
                         print(f"DEBUG: Edit/Recotizar button clicked for Cotizacion ID: {selected_cotizacion_id_accion}")
                         
                         # --- INICIO: Verificación adicional antes de permitir editar ---
@@ -396,16 +405,16 @@ def show_manage_quotes_ui():
                             if ajustes_admin_flag:
                                 st.error("🚫 No se puede editar esta cotización porque ha sido modificada por un administrador.")
                                 print(f"BLOQUEO: Intento de edición bloqueado para comercial en cotización con ajustes_modificados_admin=True")
-                                time.sleep(2)  # Pausa para permitir que el usuario vea el mensaje
-                                st.rerun()  # Recargar la página
-                                return  # Detener la ejecución
+                                time.sleep(2)
+                                st.rerun()
+                                return
                             
                             if estado_actual_id == ID_ESTADO_APROBADO:
                                 st.error("🚫 No se puede editar esta cotización porque ya está aprobada.")
                                 print(f"BLOQUEO: Intento de edición bloqueado para comercial en cotización aprobada (ID: {estado_actual_id})")
-                                time.sleep(2)  # Pausa para permitir que el usuario vea el mensaje
-                                st.rerun()  # Recargar la página
-                                return  # Detener la ejecución
+                                time.sleep(2)
+                                st.rerun()
+                                return
                         # --- FIN: Verificación adicional ---
 
                         # Marcar si es recotización (Admin editando Aprobada)
@@ -414,21 +423,30 @@ def show_manage_quotes_ui():
                             print(f"DEBUG: Marcando inicio de recotización para ID {selected_cotizacion_id_accion}")
                         else:
                             if 'recotizacion_info' in st.session_state:
-                                del st.session_state['recotizacion_info'] # Limpiar si no es recotización
+                                del st.session_state['recotizacion_info']
 
                         # Configurar modo edición
                         st.session_state.modo_edicion = True
                         st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion
                         st.session_state.datos_cotizacion_editar = None
-                        st.session_state.current_view = 'calculator'
-                        SessionManager.reset_calculator_widgets()
+                        
+                        # SOLUCIÓN: Usar trigger en lugar de cambiar directamente
+                        st.session_state.trigger_editar_cotizacion = True
                         
                         # DEBUG
-                        print(f"DEBUG EDIT: Editando cotización ID {selected_cotizacion_id_accion}")
+                        print(f"DEBUG EDIT: Configurando edición para cotización ID {selected_cotizacion_id_accion}")
                         print(f"DEBUG EDIT: modo_edicion = {st.session_state.modo_edicion}")
-                        print(f"DEBUG EDIT: current_view = {st.session_state.current_view}")
+                        print(f"DEBUG EDIT: trigger_editar_cotizacion = True")
                         
+                        # Limpiar widgets
+                        try:
+                            SessionManager.reset_calculator_widgets()
+                        except Exception as e:
+                            print(f"Error reseteando widgets: {e}")
+                        
+                        # Mensaje y rerun
                         st.success(f"⏳ Cargando cotización #{selected_cotizacion_id_accion} para edición...")
+                        time.sleep(0.5)
                         st.rerun()
 
                     if disable_edit_button:

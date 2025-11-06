@@ -1553,6 +1553,13 @@ def main():
         st.stop() # Detener ejecución si los datos no están
     # --------------------------------------------
 
+    # SOLUCIÓN STREAMLIT CLOUD: Detectar triggers de navegación
+    # Verificar si hay un trigger de edición pendiente
+    if st.session_state.get('trigger_editar_cotizacion', False):
+        print("DEBUG ROUTER: Detectado trigger de edición")
+        st.session_state.current_view = 'calculator'
+        st.session_state.trigger_editar_cotizacion = False
+    
     # Mostrar la vista actual
     current_view = st.session_state.get('current_view', 'calculator')
 
