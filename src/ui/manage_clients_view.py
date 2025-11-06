@@ -12,11 +12,17 @@ def show_manage_clients():
     st.title("Gestión de Clientes")
 
     # Botón para crear nuevo cliente
-    if st.button("➕ Crear Nuevo Cliente"):
+    if st.button("➕ Crear Nuevo Cliente", key="btn_crear_nuevo_cliente"):
+        # Depuración: Imprimir antes del cambio
+        print(f"DEBUG: Botón presionado. Vista actual: {st.session_state.get('current_view')}")
+        
         # Cambiar la vista en session_state para que app.py la maneje
         st.session_state.current_view = 'crear_cliente'
+        
+        # Depuración: Confirmar cambio
+        print(f"DEBUG: Vista cambiada a: {st.session_state.current_view}")
+        
         st.rerun()
-        # No retornar aquí directamente, dejar que el flujo principal maneje la vista
 
     st.divider()
     st.subheader("Clientes Existentes")
@@ -94,13 +100,16 @@ def show_manage_clients():
 
 def show_create_client():
     """Muestra el formulario para crear un nuevo cliente."""
+    # Depuración: Confirmar que esta función se está llamando
+    print(f"DEBUG: show_create_client() llamada. Vista actual: {st.session_state.get('current_view')}")
+    
     st.title("Crear Nuevo Cliente")
 
     # Botón para volver a la lista de clientes
-    if st.button("← Volver a la lista de clientes"):
+    if st.button("← Volver a la lista de clientes", key="btn_volver_clientes"):
+        print(f"DEBUG: Botón volver presionado")
         st.session_state.current_view = 'manage_clients'
         st.rerun()
-        # No retornar, dejar que el flujo principal maneje la vista
 
     # Formulario de creación de cliente
     with st.form("crear_cliente_form"):
