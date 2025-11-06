@@ -716,15 +716,19 @@ def show_navigation():
         if 'current_calculation' in st.session_state: del st.session_state['current_calculation']
         if 'cotizacion_model' in st.session_state: del st.session_state['cotizacion_model']
         if 'cotizacion_guardada' in st.session_state: del st.session_state['cotizacion_guardada']
-        if 'modo_edicion' in st.session_state: 
-             st.session_state.modo_edicion = False # Salir de modo edición si navegamos fuera
-             st.session_state.cotizacion_id_editar = None # <-- Corregido nombre de clave
-             st.session_state.datos_cotizacion_editar = None # <-- Limpiar datos cargados
-        # --- INICIO: Limpiar también recotizacion_info --- 
-        if 'recotizacion_info' in st.session_state: 
-             del st.session_state['recotizacion_info']
-        # --- FIN: Limpiar también recotizacion_info --- 
-        SessionManager.reset_calculator_widgets() # Resetear widgets también
+        
+        # IMPORTANTE: NO limpiar modo_edicion si estamos navegando A la calculadora
+        # (podría ser una edición iniciada desde manage_quotes)
+        if selected_key_from_radio != 'calculator':
+            # Solo limpiar si NO vamos a la calculadora
+            if 'modo_edicion' in st.session_state: 
+                 st.session_state.modo_edicion = False
+                 st.session_state.cotizacion_id_editar = None
+                 st.session_state.datos_cotizacion_editar = None
+            if 'recotizacion_info' in st.session_state: 
+                 del st.session_state['recotizacion_info']
+            SessionManager.reset_calculator_widgets()
+        
         st.rerun() 
 
 def initialize_session():

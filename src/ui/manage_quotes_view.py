@@ -411,25 +411,37 @@ def show_manage_quotes_ui():
                         if can_edit:
                             # Configurar edición
                             if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
-                                st.session_state.recotizacion_info = {'id': selected_cotizacion_id_accion}
+                                st.session_state['recotizacion_info'] = {'id': selected_cotizacion_id_accion}
                             else:
                                 if 'recotizacion_info' in st.session_state:
                                     del st.session_state['recotizacion_info']
                             
-                            st.session_state.modo_edicion = True
-                            st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion
-                            st.session_state.datos_cotizacion_editar = None
-                            st.session_state.current_view = 'calculator'
+                            # Usar notación de diccionario para asegurar que se guarde
+                            st.session_state['modo_edicion'] = True
+                            st.session_state['cotizacion_id_editar'] = selected_cotizacion_id_accion
+                            st.session_state['datos_cotizacion_editar'] = None
+                            st.session_state['current_view'] = 'calculator'
+                            
+                            print(f"DEBUG BTN: Configurado modo_edicion={st.session_state['modo_edicion']}, id={st.session_state['cotizacion_id_editar']}")
                             
                             try:
                                 SessionManager.reset_calculator_widgets()
                             except:
                                 pass
+                            
+                            # NO mostrar mensaje aquí, hacerlo después del rerun
                     
-                    # FALLBACK: Si el botón no funciona, mostrar mensaje con instrucción manual
+                    # Mostrar estado actual FUERA del botón
                     if st.session_state.get('modo_edicion') and st.session_state.get('cotizacion_id_editar') == selected_cotizacion_id_accion:
-                        st.success("✅ Configurado para edición")
-                        st.info("👆 Ahora ve al menú lateral y selecciona '🧮 Calculadora'")
+                        st.success(f"✅ Cotización #{selected_quote_data[num_col_acc]} lista para editar")
+                        
+                        # Botón para navegar manualmente
+                        if st.button("🧮 Ir a Calculadora", key=f"goto_calc_{selected_cotizacion_id_accion}", type="primary"):
+                            # Forzar cambio de vista
+                            st.session_state['current_view'] = 'calculator'
+                            st.rerun()
+                        
+                        st.caption("O usa el menú lateral → 🧮 Calculadora")
                     
                     if False:  # Código viejo deshabilitado
                         edit_submitted = False
