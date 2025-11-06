@@ -962,14 +962,30 @@ def mostrar_calculadora():
         # cotizacion_id_editar = st.session_state.get('cotizacion_a_editar_id') # <-- Clave incorrecta
         cotizacion_id_editar = st.session_state.get('cotizacion_id_editar') # <-- Clave correcta
         # --- FIN CAMBIO ---
+        
+        # DEBUG: Imprimir el ID que se va a cargar
+        print(f"🔧 DEBUG CALCULADORA: Modo edición activado")
+        print(f"🔧 DEBUG CALCULADORA: ID a cargar: {cotizacion_id_editar}")
+        print(f"🔧 DEBUG CALCULADORA: Tipo del ID: {type(cotizacion_id_editar)}")
+        
         if cotizacion_id_editar:
             # Solo cargar si no tenemos ya los datos cargados en sesión 
             # (evita recargar en cada rerun dentro del modo edición)
             if 'datos_cotizacion_editar' not in st.session_state or st.session_state.datos_cotizacion_editar is None:
                 st.info(f"**Modo Edición:** Cargando datos de Cotización ID {cotizacion_id_editar}")
+                print(f"🔧 DEBUG CALCULADORA: Llamando a get_full_cotizacion_details con ID: {cotizacion_id_editar}")
                 with st.spinner("Cargando datos para edición..."):
                     db = st.session_state.db
                     datos_cargados = db.get_full_cotizacion_details(cotizacion_id_editar)
+                    
+                    # DEBUG: Ver qué ID se recibió en los datos
+                    if datos_cargados:
+                        print(f"🔧 DEBUG CALCULADORA: Datos recibidos. ID en datos: {datos_cargados.get('id')}")
+                        print(f"🔧 DEBUG CALCULADORA: Número cotización en datos: {datos_cargados.get('numero_cotizacion')}")
+                        print(f"🔧 DEBUG CALCULADORA: Cliente en datos: {datos_cargados.get('cliente_nombre')}")
+                    else:
+                        print(f"🔧 DEBUG CALCULADORA: ¡ERROR! No se recibieron datos de la BD")
+                    
                     if datos_cargados:
                         st.session_state.datos_cotizacion_editar = datos_cargados
                         

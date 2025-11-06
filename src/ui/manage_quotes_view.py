@@ -397,10 +397,21 @@ def show_manage_quotes_ui():
                             use_container_width=True,
                             type="primary"
                         ):
+                            # DEBUG: Imprimir el ID seleccionado
+                            print(f"🔍 DEBUG EDICIÓN: ID seleccionado para editar: {selected_cotizacion_id_accion}")
+                            print(f"🔍 DEBUG EDICIÓN: Tipo del ID: {type(selected_cotizacion_id_accion)}")
+                            print(f"🔍 DEBUG EDICIÓN: Datos de la fila seleccionada: Num={selected_quote_data.get(num_col_acc)}, Cliente={selected_quote_data.get(client_col_acc)}")
+                            
                             # Activar editor inline
                             st.session_state['mostrar_editor_inline'] = True
                             st.session_state['cotizacion_id_editar'] = selected_cotizacion_id_accion
                             st.session_state['es_recotizacion'] = (user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO)
+                            
+                            print(f"✅ DEBUG EDICIÓN: Valores guardados en session_state:")
+                            print(f"   - cotizacion_id_editar: {st.session_state['cotizacion_id_editar']}")
+                            print(f"   - mostrar_editor_inline: {st.session_state['mostrar_editor_inline']}")
+                            print(f"   - es_recotizacion: {st.session_state['es_recotizacion']}")
+                            
                             st.rerun()
                     else:
                         st.button(
@@ -599,6 +610,11 @@ def _mostrar_editor_inline():
     """Muestra el editor de cotización inline"""
     cotizacion_id = st.session_state.get('cotizacion_id_editar')
     es_recotizacion = st.session_state.get('es_recotizacion', False)
+    
+    # DEBUG: Imprimir el ID que se va a editar
+    print(f"📝 DEBUG EDITOR INLINE: ID de cotización a editar: {cotizacion_id}")
+    print(f"📝 DEBUG EDITOR INLINE: Tipo del ID: {type(cotizacion_id)}")
+    print(f"📝 DEBUG EDITOR INLINE: Es recotización: {es_recotizacion}")
     
     # Configurar modo edición en session_state PRIMERO
     st.session_state['modo_edicion'] = True
