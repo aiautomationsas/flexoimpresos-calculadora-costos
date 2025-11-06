@@ -1555,7 +1555,18 @@ def main():
 
     # Mostrar la vista actual
     current_view = st.session_state.get('current_view', 'calculator') # Obtener vista actual
+    
+    # DEBUG: Mostrar vista actual en el sidebar para depuración
+    with st.sidebar:
+        with st.expander("🔍 Debug - Vista Actual", expanded=False):
+            st.write(f"**current_view:** `{current_view}`")
+            st.write(f"**authenticated:** `{st.session_state.get('authenticated', False)}`")
+            if st.button("🔄 Force Reload", key="force_reload_debug"):
+                st.rerun()
 
+    # Router de vistas
+    print(f"DEBUG ROUTER: Renderizando vista '{current_view}'")
+    
     if current_view == 'calculator':
         mostrar_calculadora()
     elif current_view == 'quote_results':
@@ -1566,10 +1577,12 @@ def main():
         # --------------------------------------------------
     elif current_view == 'manage_clients':
         # --- MODIFICACIÓN: Llamar a la función importada --- 
+        print("DEBUG ROUTER: Llamando a show_manage_clients()")
         show_manage_clients()
         # --------------------------------------------------
     elif current_view == 'crear_cliente':
         # --- MODIFICACIÓN: Llamar a la función importada --- 
+        print("DEBUG ROUTER: Llamando a show_create_client()")
         show_create_client()
         # --------------------------------------------------
     # --- MODIFICACIÓN: Llamar a la función importada --- 
@@ -1590,9 +1603,11 @@ def main():
     #     show_reports()
     else:
         # Si la vista no coincide con ninguna opción, volver a la calculadora
-        st.warning(f"Vista desconocida: {current_view}. Volviendo a la calculadora.")
+        st.warning(f"⚠️ Vista desconocida: `{current_view}`. Volviendo a la calculadora.")
+        st.write("**Vistas válidas:** calculator, quote_results, manage_quotes, manage_clients, crear_cliente, dashboard, manage_values, manage_policies, manage_cartera, manage_commercials")
         st.session_state.current_view = 'calculator'
-        st.rerun()
+        if st.button("🔄 Recargar"):
+            st.rerun()
 
 def show_quote_results():
     """Muestra los resultados de la cotización calculada."""

@@ -10,9 +10,15 @@ from src.data.models import Cliente # Importar el modelo Cliente
 def show_manage_clients():
     """Muestra la vista para gestionar clientes."""
     st.title("Gestión de Clientes")
+    
+    # DEBUG: Mostrar información en la UI
+    with st.expander("🔧 Debug Info (click para expandir)", expanded=False):
+        st.write(f"**Vista actual:** `{st.session_state.get('current_view', 'NO DEFINIDO')}`")
+        st.write(f"**Usuario autenticado:** `{st.session_state.get('authenticated', False)}`")
+        st.write(f"**Rol:** `{st.session_state.get('usuario_rol', 'NO DEFINIDO')}`")
 
     # Botón para crear nuevo cliente
-    if st.button("➕ Crear Nuevo Cliente", key="btn_crear_nuevo_cliente"):
+    if st.button("➕ Crear Nuevo Cliente", key="btn_crear_nuevo_cliente", type="primary"):
         # Depuración: Imprimir antes del cambio
         print(f"DEBUG: Botón presionado. Vista actual: {st.session_state.get('current_view')}")
         
@@ -21,6 +27,9 @@ def show_manage_clients():
         
         # Depuración: Confirmar cambio
         print(f"DEBUG: Vista cambiada a: {st.session_state.current_view}")
+        
+        # Mostrar mensaje antes del rerun
+        st.success("⏳ Redirigiendo a crear cliente...")
         
         st.rerun()
 
@@ -104,6 +113,15 @@ def show_create_client():
     print(f"DEBUG: show_create_client() llamada. Vista actual: {st.session_state.get('current_view')}")
     
     st.title("Crear Nuevo Cliente")
+    
+    # DEBUG: Confirmar visualmente que esta vista se está mostrando
+    st.info("✅ Vista 'Crear Nuevo Cliente' cargada correctamente")
+    
+    # DEBUG: Mostrar información en la UI
+    with st.expander("🔧 Debug Info (click para expandir)", expanded=False):
+        st.write(f"**Vista actual:** `{st.session_state.get('current_view', 'NO DEFINIDO')}`")
+        st.write(f"**Función:** `show_create_client()` está ejecutándose")
+        st.write(f"**DB disponible:** `{('db' in st.session_state)}`")
 
     # Botón para volver a la lista de clientes
     if st.button("← Volver a la lista de clientes", key="btn_volver_clientes"):
