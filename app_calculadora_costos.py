@@ -958,40 +958,18 @@ def mostrar_calculadora():
     datos_cargados = None
     is_edit_mode = st.session_state.get('modo_edicion', False)
     if is_edit_mode:
-        # --- INICIO CAMBIO ---
-        # cotizacion_id_editar = st.session_state.get('cotizacion_a_editar_id') # <-- Clave incorrecta
-        cotizacion_id_editar = st.session_state.get('cotizacion_id_editar') # <-- Clave correcta
-        # --- FIN CAMBIO ---
-        
-        # DEBUG: Imprimir el ID que se va a cargar
-        print(f"🔧 DEBUG CALCULADORA: Modo edición activado")
-        print(f"🔧 DEBUG CALCULADORA: ID a cargar: {cotizacion_id_editar}")
-        print(f"🔧 DEBUG CALCULADORA: Tipo del ID: {type(cotizacion_id_editar)}")
+        cotizacion_id_editar = st.session_state.get('cotizacion_id_editar')
         
         if cotizacion_id_editar:
             # Solo cargar si no tenemos ya los datos cargados en sesión 
             # (evita recargar en cada rerun dentro del modo edición)
             if 'datos_cotizacion_editar' not in st.session_state or st.session_state.datos_cotizacion_editar is None:
-                st.info(f"**Modo Edición:** Cargando datos de Cotización ID {cotizacion_id_editar}")
-                print(f"🔧 DEBUG CALCULADORA: Llamando a get_full_cotizacion_details con ID: {cotizacion_id_editar}")
                 with st.spinner("Cargando datos para edición..."):
                     db = st.session_state.db
                     datos_cargados = db.get_full_cotizacion_details(cotizacion_id_editar)
                     
-                    # DEBUG: Ver qué ID se recibió en los datos
-                    if datos_cargados:
-                        print(f"🔧 DEBUG CALCULADORA: Datos recibidos. ID en datos: {datos_cargados.get('id')}")
-                        print(f"🔧 DEBUG CALCULADORA: Número cotización en datos: {datos_cargados.get('numero_cotizacion')}")
-                        print(f"🔧 DEBUG CALCULADORA: Cliente en datos: {datos_cargados.get('cliente_nombre')}")
-                    else:
-                        print(f"🔧 DEBUG CALCULADORA: ¡ERROR! No se recibieron datos de la BD")
-                    
                     if datos_cargados:
                         st.session_state.datos_cotizacion_editar = datos_cargados
-                        
-                        # --- INICIO DIAGNÓSTICO TEMPORAL ---
-                        st.warning(f"DEBUG - Datos Cargados: numero_pistas={datos_cargados.get('numero_pistas')} (tipo: {type(datos_cargados.get('numero_pistas', '')).__name__})")
-                        # --- FIN DIAGNÓSTICO TEMPORAL ---
                         
                         # Forzar tipo producto ANTES de mostrar selector
                         tipo_producto_id_cargado = datos_cargados.get('tipo_producto_id')
@@ -1154,12 +1132,20 @@ def mostrar_calculadora():
 
     # --- Barra de Edición (si aplica) --- 
     if is_edit_mode:
+        # Mostrar información de la cotización que se está editando
+        cotizacion_info = ""
+        if datos_cargados:
+            num_cot = datos_cargados.get('numero_cotizacion', 'N/A')
+            cliente_nom = datos_cargados.get('cliente_nombre', 'N/A')
+            ref_desc = datos_cargados.get('referencia_descripcion', 'N/A')
+            cotizacion_info = f" - Cotización #{num_cot} | Cliente: {cliente_nom} | Ref: {ref_desc}"
+        
         edit_cols = st.columns([0.8, 0.2])
         with edit_cols[0]:
-            st.warning("**✏️ Modo Edición:** Modificando cotización existente. Los cambios sobrescribirán la versión anterior.")
-            st.caption("Nota: Precios actuales de materiales/acabados serán usados al recalcular.")
+            st.warning(f"**✏️ Modo Edición{cotizacion_info}**")
+            st.caption("Los cambios sobrescribirán la versión anterior. Se usarán los precios actuales de materiales/acabados.")
         with edit_cols[1]:
-            if st.button("❌ Cancelar Edición", key="cancel_edit_button", use_container_width=True):
+            if st.button("❌ Cancelar Edición", key="cancel_edit_button", width="stretch"):
                 st.session_state.modo_edicion = False
                 st.session_state.cotizacion_a_editar_id = None
                 st.session_state.datos_cotizacion_editar = None

@@ -14,6 +14,15 @@ def show_manage_quotes_ui():
     """Muestra la vista para gestionar (ver y modificar) cotizaciones."""
     st.title("Gestión de Cotizaciones")
     
+    # Limpiar estado de edición al entrar a esta vista (evita el error "Editar Cotización #None")
+    if not st.session_state.get('mostrar_editor_inline', False):
+        if 'modo_edicion' in st.session_state and st.session_state.get('current_view') == 'manage_quotes':
+            st.session_state['modo_edicion'] = False
+            st.session_state['cotizacion_id_editar'] = None
+            st.session_state['datos_cotizacion_editar'] = None
+            if 'recotizacion_info' in st.session_state:
+                del st.session_state['recotizacion_info']
+    
     # SOLUCIÓN STREAMLIT CLOUD: Tabs para edición inline
     # Verificar si hay una cotización seleccionada para editar
     if st.session_state.get('mostrar_editor_inline', False):
@@ -397,21 +406,10 @@ def show_manage_quotes_ui():
                             use_container_width=True,
                             type="primary"
                         ):
-                            # DEBUG: Imprimir el ID seleccionado
-                            print(f"🔍 DEBUG EDICIÓN: ID seleccionado para editar: {selected_cotizacion_id_accion}")
-                            print(f"🔍 DEBUG EDICIÓN: Tipo del ID: {type(selected_cotizacion_id_accion)}")
-                            print(f"🔍 DEBUG EDICIÓN: Datos de la fila seleccionada: Num={selected_quote_data.get(num_col_acc)}, Cliente={selected_quote_data.get(client_col_acc)}")
-                            
                             # Activar editor inline
                             st.session_state['mostrar_editor_inline'] = True
                             st.session_state['cotizacion_id_editar'] = selected_cotizacion_id_accion
                             st.session_state['es_recotizacion'] = (user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO)
-                            
-                            print(f"✅ DEBUG EDICIÓN: Valores guardados en session_state:")
-                            print(f"   - cotizacion_id_editar: {st.session_state['cotizacion_id_editar']}")
-                            print(f"   - mostrar_editor_inline: {st.session_state['mostrar_editor_inline']}")
-                            print(f"   - es_recotizacion: {st.session_state['es_recotizacion']}")
-                            
                             st.rerun()
                     else:
                         st.button(
@@ -611,10 +609,33 @@ def _mostrar_editor_inline():
     cotizacion_id = st.session_state.get('cotizacion_id_editar')
     es_recotizacion = st.session_state.get('es_recotizacion', False)
     
-    # DEBUG: Imprimir el ID que se va a editar
-    print(f"📝 DEBUG EDITOR INLINE: ID de cotización a editar: {cotizacion_id}")
-    print(f"📝 DEBUG EDITOR INLINE: Tipo del ID: {type(cotizacion_id)}")
-    print(f"📝 DEBUG EDITOR INLINE: Es recotización: {es_recotizacion}")
+    # Obtener el número de cotización para mostrar al usuario
+    numero_cotizacion = "N/A"
+    cliente_nombre = "N/A"
+    referencia = "N/A"
+    
+    if cotizacion_id:
+        try:
+            db_manager = st.session_state.get('db')
+            if db_manager:
+                # Obtener solo la información básica para el título
+                response = db_manager.supabase.from_('cotizaciones').select(
+                    'numero_cotizacion, cliente:clientes(nombre), referencia_cliente:referencias_cliente(referencia_descripcion)'
+                ).eq('id', cotizacion_id).execute()
+                
+                if response and response.data and len(response.data) > 0:
+                    data = response.data[0]
+                    numero_cotizacion = data.get('numero_cotizacion', 'N/A')
+                    
+                    # Extraer nombre del cliente del objeto anidado
+                    if data.get('cliente') and isinstance(data['cliente'], dict):
+                        cliente_nombre = data['cliente'].get('nombre', 'N/A')
+                    
+                    # Extraer referencia del objeto anidado
+                    if data.get('referencia_cliente') and isinstance(data['referencia_cliente'], dict):
+                        referencia = data['referencia_cliente'].get('referencia_descripcion', 'N/A')
+        except Exception as e:
+            print(f"Error obteniendo número de cotización: {e}")
     
     # Configurar modo edición en session_state PRIMERO
     st.session_state['modo_edicion'] = True
@@ -629,7 +650,7 @@ def _mostrar_editor_inline():
         pass
     
     # UI
-    st.title(f"{'🔁 Recotizar' if es_recotizacion else '✏️ Editar'} Cotización #{cotizacion_id}")
+    st.title(f"{'🔁 Recotizar' if es_recotizacion else '✏️ Editar'} Cotización #{numero_cotizacion}")
     
     # Botón para cancelar
     if st.button("❌ Cancelar Edición"):
@@ -656,11 +677,16 @@ def _mostrar_editor_inline():
     # Información adicional
     st.write("---")
     st.write("**Información de la cotización:**")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Número de Cotización", f"#{cotizacion_id}")
+        st.metric("Número", f"#{numero_cotizacion}")
     with col2:
-        st.metric("Modo", "Recotización" if es_recotizacion else "Edición")
+        st.metric("Cliente", cliente_nombre)
+    with col3:
+        st.metric("Modo", "🔁 Recotización" if es_recotizacion else "✏️ Edición")
+    
+    if referencia != "N/A":
+        st.caption(f"**Referencia:** {referencia}")
 
 # Definir la función original para mantener compatibilidad
 def show_manage_quotes():
