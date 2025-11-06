@@ -14,11 +14,15 @@ def show_manage_quotes_ui():
     """Muestra la vista para gestionar (ver y modificar) cotizaciones."""
     st.title("Gestión de Cotizaciones")
     
+    # SOLUCIÓN STREAMLIT CLOUD: Modo inline
+    st.info("💡 Para editar una cotización, use el selector 'Acciones' debajo de la tabla")
+    
     # DEBUG: Información de estado
     with st.expander("🔧 Debug - Estado de Edición", expanded=False):
         st.write(f"**modo_edicion:** `{st.session_state.get('modo_edicion', False)}`")
         st.write(f"**cotizacion_id_editar:** `{st.session_state.get('cotizacion_id_editar', 'None')}`")
         st.write(f"**current_view:** `{st.session_state.get('current_view', 'None')}`")
+        st.write(f"**Método:** Inline (sin navegación)")
 
     if 'db' not in st.session_state:
         st.error("Error: La conexión a la base de datos no está inicializada.")
@@ -378,25 +382,59 @@ def show_manage_quotes_ui():
 
                 cols_accion_display = st.columns(2)
 
-                # --- Botón Editar ---
+                # --- Botón Editar (SOLUCIÓN CLOUD: Inline) ---
                 with cols_accion_display[0]:
                     st.write("**Editar Cotización:**")
-                    edit_button_key = f"edit_button_{selected_cotizacion_id_accion}"
-                    button_label = f"✏️ Editar #{selected_quote_data[num_col_acc]}"
-                    # Marcar como Recotización si Admin edita una Aprobada
-                    if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
-                         button_label = f"🔁 Recotizar #{selected_quote_data[num_col_acc]}"
-
-                    # SOLUCIÓN STREAMLIT CLOUD: Usar form para mejor compatibilidad
-                    with st.form(key=f"form_edit_{selected_cotizacion_id_accion}", clear_on_submit=False):
-                        edit_submitted = st.form_submit_button(
-                            button_label,
-                            use_container_width=True,
-                            disabled=disable_edit_button,
-                            type="primary"
-                        )
                     
-                    if edit_submitted:
+                    button_label = f"✏️ Ir a Editar #{selected_quote_data[num_col_acc]}"
+                    if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
+                         button_label = f"🔁 Ir a Recotizar #{selected_quote_data[num_col_acc]}"
+                    
+                    # SOLUCIÓN DEFINITIVA: Link directo que actualiza session_state
+                    if st.button(
+                        button_label,
+                        key=f"edit_btn_{selected_cotizacion_id_accion}",
+                        use_container_width=True,
+                        disabled=disable_edit_button,
+                        type="primary"
+                    ):
+                        # Verificaciones de seguridad
+                        can_edit = True
+                        if user_role == 'comercial':
+                            if ajustes_admin_flag:
+                                st.error("🚫 No se puede editar: modificada por administrador.")
+                                can_edit = False
+                            elif estado_actual_id == ID_ESTADO_APROBADO:
+                                st.error("🚫 No se puede editar: cotización ya aprobada.")
+                                can_edit = False
+                        
+                        if can_edit:
+                            # Configurar edición
+                            if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
+                                st.session_state.recotizacion_info = {'id': selected_cotizacion_id_accion}
+                            else:
+                                if 'recotizacion_info' in st.session_state:
+                                    del st.session_state['recotizacion_info']
+                            
+                            st.session_state.modo_edicion = True
+                            st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion
+                            st.session_state.datos_cotizacion_editar = None
+                            st.session_state.current_view = 'calculator'
+                            
+                            try:
+                                SessionManager.reset_calculator_widgets()
+                            except:
+                                pass
+                    
+                    # FALLBACK: Si el botón no funciona, mostrar mensaje con instrucción manual
+                    if st.session_state.get('modo_edicion') and st.session_state.get('cotizacion_id_editar') == selected_cotizacion_id_accion:
+                        st.success("✅ Configurado para edición")
+                        st.info("👆 Ahora ve al menú lateral y selecciona '🧮 Calculadora'")
+                    
+                    if False:  # Código viejo deshabilitado
+                        edit_submitted = False
+                    
+                    if False:  # edit_submitted (deshabilitado)
                         print(f"DEBUG: Edit/Recotizar button clicked for Cotizacion ID: {selected_cotizacion_id_accion}")
                         
                         # --- INICIO: Verificación adicional antes de permitir editar ---
