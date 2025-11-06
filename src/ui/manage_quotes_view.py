@@ -618,33 +618,40 @@ def _mostrar_editor_inline():
         try:
             db_manager = st.session_state.get('db')
             if db_manager:
-                # Obtener solo la información básica para el título
+                # Obtener la información básica de la cotización
                 response = db_manager.supabase.from_('cotizaciones').select(
-                    'numero_cotizacion, cliente:clientes(nombre), referencia_cliente:referencias_cliente(referencia_descripcion)'
-                ).eq('id', cotizacion_id).execute()
+                    'numero_cotizacion, cliente_id, referencia_cliente_id'
+                ).eq('id', cotizacion_id).single().execute()
                 
-                if response and response.data and len(response.data) > 0:
-                    data = response.data[0]
+                if response and response.data:
+                    data = response.data
                     numero_cotizacion = data.get('numero_cotizacion', 'N/A')
+                    cliente_id = data.get('cliente_id')
+                    ref_id = data.get('referencia_cliente_id')
                     
-                    # DEBUG TEMPORAL
-                    print(f"🔍 DEBUG: Datos obtenidos de la BD:")
-                    print(f"   - ID buscado: {cotizacion_id}")
-                    print(f"   - Data completa: {data}")
-                    print(f"   - numero_cotizacion extraído: {numero_cotizacion}")
+                    print(f"🔍 DEBUG: Cotización obtenida - Número: {numero_cotizacion}, Cliente ID: {cliente_id}")
                     
-                    # Extraer nombre del cliente del objeto anidado
-                    if data.get('cliente') and isinstance(data['cliente'], dict):
-                        cliente_nombre = data['cliente'].get('nombre', 'N/A')
+                    # Obtener nombre del cliente
+                    if cliente_id:
+                        try:
+                            cliente_resp = db_manager.supabase.from_('clientes').select('nombre').eq('id', cliente_id).single().execute()
+                            if cliente_resp and cliente_resp.data:
+                                cliente_nombre = cliente_resp.data.get('nombre', 'N/A')
+                        except Exception as e_cliente:
+                            print(f"Error obteniendo cliente: {e_cliente}")
                     
-                    # Extraer referencia del objeto anidado
-                    if data.get('referencia_cliente') and isinstance(data['referencia_cliente'], dict):
-                        referencia = data['referencia_cliente'].get('referencia_descripcion', 'N/A')
+                    # Obtener referencia
+                    if ref_id:
+                        try:
+                            ref_resp = db_manager.supabase.from_('referencias_cliente').select('referencia_descripcion').eq('id', ref_id).single().execute()
+                            if ref_resp and ref_resp.data:
+                                referencia = ref_resp.data.get('referencia_descripcion', 'N/A')
+                        except Exception as e_ref:
+                            print(f"Error obteniendo referencia: {e_ref}")
                 else:
                     print(f"🔍 DEBUG: No se obtuvieron datos de la BD para ID {cotizacion_id}")
-                    print(f"   - Response: {response}")
         except Exception as e:
-            print(f"Error obteniendo número de cotización: {e}")
+            print(f"Error obteniendo información de cotización: {e}")
             import traceback
             traceback.print_exc()
     
