@@ -1554,11 +1554,43 @@ def main():
     # --------------------------------------------
 
     # SOLUCIÓN STREAMLIT CLOUD: Detectar triggers de navegación
-    # Verificar si hay un trigger de edición pendiente
+    # Método 1: Trigger directo
     if st.session_state.get('trigger_editar_cotizacion', False):
         print("DEBUG ROUTER: Detectado trigger de edición")
         st.session_state.current_view = 'calculator'
         st.session_state.trigger_editar_cotizacion = False
+    
+    # Método 2: Query params (más confiable en Cloud)
+    try:
+        query_params = st.query_params
+        if "edit" in query_params:
+            cotizacion_id = query_params["edit"]
+            print(f"DEBUG ROUTER: Detectado edit en query params: {cotizacion_id}")
+            
+            # Configurar modo edición
+            st.session_state.modo_edicion = True
+            st.session_state.cotizacion_id_editar = int(cotizacion_id)
+            st.session_state.datos_cotizacion_editar = None
+            st.session_state.current_view = 'calculator'
+            
+            # Limpiar query param
+            st.query_params.clear()
+    except:
+        try:
+            # Fallback a método antiguo
+            query_params = st.experimental_get_query_params()
+            if "edit" in query_params:
+                cotizacion_id = query_params["edit"][0]
+                print(f"DEBUG ROUTER: Detectado edit en query params (método antiguo): {cotizacion_id}")
+                
+                st.session_state.modo_edicion = True
+                st.session_state.cotizacion_id_editar = int(cotizacion_id)
+                st.session_state.datos_cotizacion_editar = None
+                st.session_state.current_view = 'calculator'
+                
+                st.experimental_set_query_params()
+        except:
+            pass
     
     # Mostrar la vista actual
     current_view = st.session_state.get('current_view', 'calculator')

@@ -444,8 +444,19 @@ def show_manage_quotes_ui():
                         except Exception as e:
                             print(f"Error reseteando widgets: {e}")
                         
-                        # Mensaje y rerun
+                        # SOLUCIÓN RADICAL: Usar query params para forzar navegación
+                        # Esto funciona en Streamlit Cloud cuando st.rerun() falla
                         st.success(f"⏳ Cargando cotización #{selected_cotizacion_id_accion} para edición...")
+                        
+                        # Método 1: Forzar con query params
+                        try:
+                            st.query_params.update({"edit": str(selected_cotizacion_id_accion)})
+                        except:
+                            try:
+                                st.experimental_set_query_params(edit=str(selected_cotizacion_id_accion))
+                            except:
+                                pass
+                        
                         time.sleep(0.5)
                         st.rerun()
 
