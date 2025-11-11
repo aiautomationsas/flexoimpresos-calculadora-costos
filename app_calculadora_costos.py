@@ -716,15 +716,19 @@ def show_navigation():
         if 'current_calculation' in st.session_state: del st.session_state['current_calculation']
         if 'cotizacion_model' in st.session_state: del st.session_state['cotizacion_model']
         if 'cotizacion_guardada' in st.session_state: del st.session_state['cotizacion_guardada']
-        if 'modo_edicion' in st.session_state: 
-             st.session_state.modo_edicion = False # Salir de modo edición si navegamos fuera
-             st.session_state.cotizacion_id_editar = None # <-- Corregido nombre de clave
-             st.session_state.datos_cotizacion_editar = None # <-- Limpiar datos cargados
-        # --- INICIO: Limpiar también recotizacion_info --- 
-        if 'recotizacion_info' in st.session_state: 
-             del st.session_state['recotizacion_info']
-        # --- FIN: Limpiar también recotizacion_info --- 
-        SessionManager.reset_calculator_widgets() # Resetear widgets también
+        
+        # IMPORTANTE: NO limpiar modo_edicion si estamos navegando A la calculadora
+        # (podría ser una edición iniciada desde manage_quotes)
+        if selected_key_from_radio != 'calculator':
+            # Solo limpiar si NO vamos a la calculadora
+            if 'modo_edicion' in st.session_state: 
+                 st.session_state.modo_edicion = False
+                 st.session_state.cotizacion_id_editar = None
+                 st.session_state.datos_cotizacion_editar = None
+            if 'recotizacion_info' in st.session_state: 
+                 del st.session_state['recotizacion_info']
+            SessionManager.reset_calculator_widgets()
+        
         st.rerun() 
 
 def initialize_session():
@@ -954,24 +958,18 @@ def mostrar_calculadora():
     datos_cargados = None
     is_edit_mode = st.session_state.get('modo_edicion', False)
     if is_edit_mode:
-        # --- INICIO CAMBIO ---
-        # cotizacion_id_editar = st.session_state.get('cotizacion_a_editar_id') # <-- Clave incorrecta
-        cotizacion_id_editar = st.session_state.get('cotizacion_id_editar') # <-- Clave correcta
-        # --- FIN CAMBIO ---
+        cotizacion_id_editar = st.session_state.get('cotizacion_id_editar')
+        
         if cotizacion_id_editar:
             # Solo cargar si no tenemos ya los datos cargados en sesión 
             # (evita recargar en cada rerun dentro del modo edición)
             if 'datos_cotizacion_editar' not in st.session_state or st.session_state.datos_cotizacion_editar is None:
-                st.info(f"**Modo Edición:** Cargando datos de Cotización ID {cotizacion_id_editar}")
                 with st.spinner("Cargando datos para edición..."):
                     db = st.session_state.db
                     datos_cargados = db.get_full_cotizacion_details(cotizacion_id_editar)
+                    
                     if datos_cargados:
                         st.session_state.datos_cotizacion_editar = datos_cargados
-                        
-                        # --- INICIO DIAGNÓSTICO TEMPORAL ---
-                        st.warning(f"DEBUG - Datos Cargados: numero_pistas={datos_cargados.get('numero_pistas')} (tipo: {type(datos_cargados.get('numero_pistas', '')).__name__})")
-                        # --- FIN DIAGNÓSTICO TEMPORAL ---
                         
                         # Forzar tipo producto ANTES de mostrar selector
                         tipo_producto_id_cargado = datos_cargados.get('tipo_producto_id')
@@ -1134,12 +1132,20 @@ def mostrar_calculadora():
 
     # --- Barra de Edición (si aplica) --- 
     if is_edit_mode:
+        # Mostrar información de la cotización que se está editando
+        cotizacion_info = ""
+        if datos_cargados:
+            num_cot = datos_cargados.get('numero_cotizacion', 'N/A')
+            cliente_nom = datos_cargados.get('cliente_nombre', 'N/A')
+            ref_desc = datos_cargados.get('referencia_descripcion', 'N/A')
+            cotizacion_info = f" - Cotización #{num_cot} | Cliente: {cliente_nom} | Ref: {ref_desc}"
+        
         edit_cols = st.columns([0.8, 0.2])
         with edit_cols[0]:
-            st.warning("**✏️ Modo Edición:** Modificando cotización existente. Los cambios sobrescribirán la versión anterior.")
-            st.caption("Nota: Precios actuales de materiales/acabados serán usados al recalcular.")
+            st.warning(f"**✏️ Modo Edición{cotizacion_info}**")
+            st.caption("Los cambios sobrescribirán la versión anterior. Se usarán los precios actuales de materiales/acabados.")
         with edit_cols[1]:
-            if st.button("❌ Cancelar Edición", key="cancel_edit_button", use_container_width=True):
+            if st.button("❌ Cancelar Edición", key="cancel_edit_button", width="stretch"):
                 st.session_state.modo_edicion = False
                 st.session_state.cotizacion_a_editar_id = None
                 st.session_state.datos_cotizacion_editar = None
@@ -1553,6 +1559,45 @@ def main():
         st.stop() # Detener ejecución si los datos no están
     # --------------------------------------------
 
+    # SOLUCIÓN STREAMLIT CLOUD: Detectar triggers de navegación
+    # Método 1: Trigger directo
+    if st.session_state.get('trigger_editar_cotizacion', False):
+        print("DEBUG ROUTER: Detectado trigger de edición")
+        st.session_state.current_view = 'calculator'
+        st.session_state.trigger_editar_cotizacion = False
+    
+    # Método 2: Query params (más confiable en Cloud)
+    try:
+        query_params = st.query_params
+        if "edit" in query_params:
+            cotizacion_id = query_params["edit"]
+            print(f"DEBUG ROUTER: Detectado edit en query params: {cotizacion_id}")
+            
+            # Configurar modo edición
+            st.session_state.modo_edicion = True
+            st.session_state.cotizacion_id_editar = int(cotizacion_id)
+            st.session_state.datos_cotizacion_editar = None
+            st.session_state.current_view = 'calculator'
+            
+            # Limpiar query param
+            st.query_params.clear()
+    except:
+        try:
+            # Fallback a método antiguo
+            query_params = st.experimental_get_query_params()
+            if "edit" in query_params:
+                cotizacion_id = query_params["edit"][0]
+                print(f"DEBUG ROUTER: Detectado edit en query params (método antiguo): {cotizacion_id}")
+                
+                st.session_state.modo_edicion = True
+                st.session_state.cotizacion_id_editar = int(cotizacion_id)
+                st.session_state.datos_cotizacion_editar = None
+                st.session_state.current_view = 'calculator'
+                
+                st.experimental_set_query_params()
+        except:
+            pass
+    
     # Mostrar la vista actual
     current_view = st.session_state.get('current_view', 'calculator')
 

@@ -13,6 +13,24 @@ from src.logic.report_generator import generar_informe_tecnico_markdown, markdow
 def show_manage_quotes_ui():
     """Muestra la vista para gestionar (ver y modificar) cotizaciones."""
     st.title("Gestión de Cotizaciones")
+    
+    # Limpiar estado de edición al entrar a esta vista (evita el error "Editar Cotización #None")
+    if not st.session_state.get('mostrar_editor_inline', False):
+        if 'modo_edicion' in st.session_state and st.session_state.get('current_view') == 'manage_quotes':
+            st.session_state['modo_edicion'] = False
+            st.session_state['cotizacion_id_editar'] = None
+            st.session_state['datos_cotizacion_editar'] = None
+            if 'recotizacion_info' in st.session_state:
+                del st.session_state['recotizacion_info']
+    
+    # SOLUCIÓN STREAMLIT CLOUD: Tabs para edición inline
+    # Verificar si hay una cotización seleccionada para editar
+    if st.session_state.get('mostrar_editor_inline', False):
+        _mostrar_editor_inline()
+        return
+    
+    # Mensaje informativo
+    st.info("💡 Seleccione una cotización de la tabla para ver sus acciones")
 
     if 'db' not in st.session_state:
         st.error("Error: La conexión a la base de datos no está inicializada.")
@@ -372,16 +390,44 @@ def show_manage_quotes_ui():
 
                 cols_accion_display = st.columns(2)
 
-                # --- Botón Editar ---
+                # --- SOLUCIÓN FINAL: Expandir directamente inline ---
                 with cols_accion_display[0]:
                     st.write("**Editar Cotización:**")
-                    edit_button_key = f"edit_button_{selected_cotizacion_id_accion}"
-                    button_label = f"✏️ Editar #{selected_quote_data[num_col_acc]}"
-                    # Marcar como Recotización si Admin edita una Aprobada
+                    
+                    label_text = f"Editar #{selected_quote_data[num_col_acc]}"
                     if user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO:
-                         button_label = f"🔁 Recotizar #{selected_quote_data[num_col_acc]}"
-
-                    if st.button(button_label, key=edit_button_key, use_container_width=True, disabled=disable_edit_button):
+                         label_text = f"Recotizar #{selected_quote_data[num_col_acc]}"
+                    
+                    # SOLUCIÓN INLINE: Activar modo editor
+                    if not disable_edit_button:
+                        if st.button(
+                            f"✏️ {label_text}",
+                            key=f"edit_inline_{selected_cotizacion_id_accion}",
+                            use_container_width=True,
+                            type="primary"
+                        ):
+                            # Activar editor inline
+                            st.session_state['mostrar_editor_inline'] = True
+                            st.session_state['cotizacion_id_editar'] = selected_cotizacion_id_accion
+                            st.session_state['es_recotizacion'] = (user_role == 'administrador' and estado_actual_id == ID_ESTADO_APROBADO)
+                            st.rerun()
+                    else:
+                        st.button(
+                            f"✏️ {label_text}",
+                            key=f"edit_disabled_{selected_cotizacion_id_accion}",
+                            use_container_width=True,
+                            disabled=True
+                        )
+                        if user_role == 'comercial':
+                            if ajustes_admin_flag:
+                                st.caption("🔒 Modificada por administrador")
+                            elif estado_actual_id == ID_ESTADO_APROBADO:
+                                st.caption("🔒 Ya aprobada")
+                    
+                    if False:  # Código viejo deshabilitado
+                        edit_submitted = False
+                    
+                    if False:  # edit_submitted (deshabilitado)
                         print(f"DEBUG: Edit/Recotizar button clicked for Cotizacion ID: {selected_cotizacion_id_accion}")
                         
                         # --- INICIO: Verificación adicional antes de permitir editar ---
@@ -390,16 +436,16 @@ def show_manage_quotes_ui():
                             if ajustes_admin_flag:
                                 st.error("🚫 No se puede editar esta cotización porque ha sido modificada por un administrador.")
                                 print(f"BLOQUEO: Intento de edición bloqueado para comercial en cotización con ajustes_modificados_admin=True")
-                                time.sleep(2)  # Pausa para permitir que el usuario vea el mensaje
-                                st.rerun()  # Recargar la página
-                                return  # Detener la ejecución
+                                time.sleep(2)
+                                st.rerun()
+                                return
                             
                             if estado_actual_id == ID_ESTADO_APROBADO:
                                 st.error("🚫 No se puede editar esta cotización porque ya está aprobada.")
                                 print(f"BLOQUEO: Intento de edición bloqueado para comercial en cotización aprobada (ID: {estado_actual_id})")
-                                time.sleep(2)  # Pausa para permitir que el usuario vea el mensaje
-                                st.rerun()  # Recargar la página
-                                return  # Detener la ejecución
+                                time.sleep(2)
+                                st.rerun()
+                                return
                         # --- FIN: Verificación adicional ---
 
                         # Marcar si es recotización (Admin editando Aprobada)
@@ -408,13 +454,41 @@ def show_manage_quotes_ui():
                             print(f"DEBUG: Marcando inicio de recotización para ID {selected_cotizacion_id_accion}")
                         else:
                             if 'recotizacion_info' in st.session_state:
-                                del st.session_state['recotizacion_info'] # Limpiar si no es recotización
+                                del st.session_state['recotizacion_info']
 
+                        # Configurar modo edición
                         st.session_state.modo_edicion = True
-                        st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion # Clave correcta
-                        st.session_state.datos_cotizacion_editar = None # Limpiar datos viejos para forzar recarga
-                        st.session_state.current_view = 'calculator'
-                        SessionManager.reset_calculator_widgets() # Limpiar widgets de calculadora
+                        st.session_state.cotizacion_id_editar = selected_cotizacion_id_accion
+                        st.session_state.datos_cotizacion_editar = None
+                        
+                        # SOLUCIÓN: Usar trigger en lugar de cambiar directamente
+                        st.session_state.trigger_editar_cotizacion = True
+                        
+                        # DEBUG
+                        print(f"DEBUG EDIT: Configurando edición para cotización ID {selected_cotizacion_id_accion}")
+                        print(f"DEBUG EDIT: modo_edicion = {st.session_state.modo_edicion}")
+                        print(f"DEBUG EDIT: trigger_editar_cotizacion = True")
+                        
+                        # Limpiar widgets
+                        try:
+                            SessionManager.reset_calculator_widgets()
+                        except Exception as e:
+                            print(f"Error reseteando widgets: {e}")
+                        
+                        # SOLUCIÓN RADICAL: Usar query params para forzar navegación
+                        # Esto funciona en Streamlit Cloud cuando st.rerun() falla
+                        st.success(f"⏳ Cargando cotización #{selected_cotizacion_id_accion} para edición...")
+                        
+                        # Método 1: Forzar con query params
+                        try:
+                            st.query_params.update({"edit": str(selected_cotizacion_id_accion)})
+                        except:
+                            try:
+                                st.experimental_set_query_params(edit=str(selected_cotizacion_id_accion))
+                            except:
+                                pass
+                        
+                        time.sleep(0.5)
                         st.rerun()
 
                     if disable_edit_button:
@@ -529,6 +603,92 @@ def clear_pdf_data(quote_id):
     if filename_key in st.session_state:
         del st.session_state[filename_key]
         print(f"Limpiando datos PDF para quote_id {quote_id}") # Debug
+
+def _mostrar_editor_inline():
+    """Muestra el editor de cotización inline"""
+    cotizacion_id = st.session_state.get('cotizacion_id_editar')
+    es_recotizacion = st.session_state.get('es_recotizacion', False)
+    
+    # Obtener el número de cotización para mostrar al usuario
+    numero_cotizacion = "N/A"
+    cliente_nombre = "N/A"
+    referencia = "N/A"
+    
+    if cotizacion_id:
+        try:
+            db_manager = st.session_state.get('db')
+            if db_manager:
+                # Usar el mismo RPC que se usa en la lista principal para obtener datos completos
+                response = db_manager.supabase.rpc('get_visible_cotizaciones_for_dashboard').execute()
+                
+                if response and response.data:
+                    # Buscar la cotización específica por ID
+                    cotizacion_data = next((c for c in response.data if c.get('id') == cotizacion_id), None)
+                    
+                    if cotizacion_data:
+                        numero_cotizacion = cotizacion_data.get('numero_cotizacion', 'N/A')
+                        cliente_nombre = cotizacion_data.get('cliente_nombre', 'N/A')
+                        referencia = cotizacion_data.get('referencia', 'N/A')
+                        print(f"🔍 DEBUG: Cotización obtenida - #{numero_cotizacion}, Cliente: {cliente_nombre}")
+                    else:
+                        print(f"🔍 DEBUG: No se encontró la cotización ID {cotizacion_id} en los datos del RPC")
+                else:
+                    print(f"🔍 DEBUG: No se obtuvieron datos del RPC")
+        except Exception as e:
+            print(f"Error obteniendo información de cotización: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Configurar modo edición en session_state PRIMERO
+    st.session_state['modo_edicion'] = True
+    st.session_state['datos_cotizacion_editar'] = None
+    
+    if es_recotizacion:
+        st.session_state['recotizacion_info'] = {'id': cotizacion_id}
+    
+    try:
+        SessionManager.reset_calculator_widgets()
+    except:
+        pass
+    
+    # UI
+    st.title(f"{'🔁 Recotizar' if es_recotizacion else '✏️ Editar'} Cotización #{numero_cotizacion}")
+    
+    # Botón para cancelar
+    if st.button("❌ Cancelar Edición"):
+        st.session_state['mostrar_editor_inline'] = False
+        st.session_state['cotizacion_id_editar'] = None
+        st.session_state['modo_edicion'] = False
+        st.rerun()
+    
+    st.divider()
+    
+    # Mensaje principal
+    st.success("✅ Modo de Edición Activado")
+    st.write("### La cotización está lista para editar")
+    
+    # Caja destacada con instrucción
+    st.info("""
+    ### 👉 Siguiente paso:
+    
+    **Haz click en "🧮 Cotizador" en el menú lateral izquierdo**
+    
+    La cotización se cargará automáticamente en la calculadora lista para editar.
+    """)
+    
+    # Información adicional
+    st.write("---")
+    st.write("**Información de la cotización:**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Número", f"#{numero_cotizacion}")
+    with col2:
+        st.metric("Cliente", cliente_nombre)
+    with col3:
+        st.metric("Modo", "🔁 Recotización" if es_recotizacion else "✏️ Edición")
+    
+    if referencia != "N/A":
+        st.caption(f"**Referencia:** {referencia}")
 
 # Definir la función original para mantener compatibilidad
 def show_manage_quotes():
