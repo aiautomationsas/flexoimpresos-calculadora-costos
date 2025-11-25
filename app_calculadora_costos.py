@@ -988,6 +988,12 @@ def mostrar_calculadora():
                         try:
                             calculos_raw = db.get_calculos_escala_cotizacion(cotizacion_id_editar)
                             if calculos_raw and isinstance(calculos_raw, dict):
+                                # --- NUEVO: Cargar unidad de montaje persistida ---
+                                unidad_z = calculos_raw.get('unidad_z_dientes')
+                                if unidad_z is not None:
+                                    st.session_state['unidad_montaje_dientes'] = int(unidad_z)
+                                    print(f"DEBUG: Unidad de montaje cargada de BD: {unidad_z}")
+
                                 params_esp = calculos_raw.get('parametros_especiales')
                                 if isinstance(params_esp, dict):
                                     st.session_state['ajustar_material'] = bool(params_esp.get('ajustar_material', False))
