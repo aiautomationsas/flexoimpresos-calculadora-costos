@@ -96,7 +96,7 @@ class CalculadoraDesperdicio:
         PARA MANGAS (es_manga=True):
         - Ordena por gap (menor primero), luego por dientes
         """
-        GAP_UMBRAL_ACEPTABLE = 3.5  # mm - gap máximo considerado "igual de bueno"
+        GAP_UMBRAL_ACEPTABLE = 3.0  # mm - gap estándar promedio
         
         # Filtrar opciones con desperdicio válido (menor a 999)
         opciones_validas = [op for op in opciones if op.desperdicio < 999]

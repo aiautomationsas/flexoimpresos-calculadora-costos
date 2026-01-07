@@ -29,11 +29,11 @@ class TestUnitSelectionPriority(unittest.TestCase):
             f"Para etiquetas se esperaba unidad pequeña, pero eligió {mejor_opcion.dientes}"
         )
         
-        # El gap debe ser aceptable (≤ 3.5mm)
+        # El gap debe ser aceptable (≤ 3mm)
         self.assertLessEqual(
             mejor_opcion.desperdicio, 
-            3.5,
-            f"Gap {mejor_opcion.desperdicio}mm excede umbral aceptable de 3.5mm"
+            3.0,
+            f"Gap {mejor_opcion.desperdicio}mm excede umbral aceptable de 3mm"
         )
     
     def test_mangas_mantiene_comportamiento_original(self):
@@ -59,8 +59,8 @@ class TestUnitSelectionPriority(unittest.TestCase):
         calc = CalculadoraDesperdicio(es_manga=False)
         opciones = calc.calcular_todas_opciones(avance_mm=32.0)
         
-        # Filtrar solo opciones con gap ≤ 3.5
-        opciones_aceptables = [op for op in opciones if op.desperdicio <= 3.5]
+        # Filtrar solo opciones con gap ≤ 3
+        opciones_aceptables = [op for op in opciones if op.desperdicio <= 3.0]
         
         if len(opciones_aceptables) > 1:
             # Verificar que están ordenadas por dientes (menor primero)
@@ -108,7 +108,7 @@ class TestUmbralGapAceptable(unittest.TestCase):
         opciones = calc.calcular_todas_opciones(avance_mm=50.0)
         
         # Filtrar opciones fuera del umbral
-        opciones_fuera = [op for op in opciones if op.desperdicio > 3.5]
+        opciones_fuera = [op for op in opciones if op.desperdicio > 3.0]
         
         if len(opciones_fuera) > 1:
             # Verificar ordenamiento por gap
