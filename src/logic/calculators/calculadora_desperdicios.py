@@ -87,17 +87,40 @@ class CalculadoraDesperdicio:
         """
         Filtra las opciones según el criterio de desperdicio mínimo.
         Solo se consideran válidas las opciones con desperdicio < 999.
-        Se ordenan por el valor absoluto del desperdicio para encontrar la opción que más se acerca a 0.
+        
+        PARA ETIQUETAS (es_manga=False):
+        - Prioriza unidades pequeñas cuando el gap está dentro del umbral aceptable
+        - Opciones con gap <= GAP_UMBRAL_ACEPTABLE se ordenan por dientes (menor primero)
+        - Opciones fuera del umbral se ordenan por gap (menor primero)
+        
+        PARA MANGAS (es_manga=True):
+        - Ordena por gap (menor primero), luego por dientes
         """
+        GAP_UMBRAL_ACEPTABLE = 3.5  # mm - gap máximo considerado "igual de bueno"
+        
         # Filtrar opciones con desperdicio válido (menor a 999)
         opciones_validas = [op for op in opciones if op.desperdicio < 999]
         
         if not opciones_validas:
             return []
         
-        # Ordenar por el valor absoluto del desperdicio y luego por dientes
-        # Esto asegura que se seleccione la opción que minimiza el desperdicio real
-        return sorted(opciones_validas, key=lambda x: (abs(x.desperdicio), x.dientes))
+        # Para MANGAS: mantener comportamiento original (menor gap primero)
+        if self.es_manga:
+            return sorted(opciones_validas, key=lambda x: (abs(x.desperdicio), x.dientes))
+        
+        # Para ETIQUETAS: priorizar unidades pequeñas cuando gap es aceptable
+        # Separar en grupos: aceptables vs fuera de umbral
+        opciones_aceptables = [op for op in opciones_validas if op.desperdicio <= GAP_UMBRAL_ACEPTABLE]
+        opciones_fuera_umbral = [op for op in opciones_validas if op.desperdicio > GAP_UMBRAL_ACEPTABLE]
+        
+        # Ordenar opciones aceptables: primero por dientes (menor = unidad más pequeña), luego por gap
+        opciones_aceptables_ordenadas = sorted(opciones_aceptables, key=lambda x: (x.dientes, abs(x.desperdicio)))
+        
+        # Ordenar opciones fuera de umbral: por gap primero, luego por dientes
+        opciones_fuera_umbral_ordenadas = sorted(opciones_fuera_umbral, key=lambda x: (abs(x.desperdicio), x.dientes))
+        
+        # Retornar primero las aceptables (ordenadas por dientes), luego las de fuera del umbral
+        return opciones_aceptables_ordenadas + opciones_fuera_umbral_ordenadas
 
     def _calcular_max_repeticiones(self, avance_mm: float) -> int:
         """Calcula el máximo número de repeticiones posibles considerando el ancho de máquina y gaps"""
