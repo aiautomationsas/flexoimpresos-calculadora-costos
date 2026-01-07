@@ -19,3 +19,4 @@ Este directorio contiene scripts para debugging y diagnóstico.
 cd /path/to/proyecto
 python scripts/debug/debug_troquel_simple.py
 ```
+| `verify_pdf.py` | Verificación de generación de PDF con datos de prueba |
