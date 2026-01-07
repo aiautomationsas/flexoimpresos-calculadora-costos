@@ -317,5 +317,201 @@ class TestEdicionCotizacion(unittest.TestCase):
         self.assertFalse(params_esp.get('ajustar_rentabilidad', False))
 
 
+class TestIntegracionPersistencia(unittest.TestCase):
+    """
+    Tests de integración que simulan el ciclo completo:
+    guardar → cargar cotización con ajustes administrativos.
+    """
+    
+    def setUp(self):
+        """Configura datos comunes para los tests de integración."""
+        self.cotizacion_id = 12345
+        
+        # Ajustes admin que el usuario configura
+        self.ajustes_admin = {
+            'ajustar_material': True,
+            'valor_material_ajustado': 2750.0,
+            'ajustar_troquel': True,
+            'precio_troquel': 875000.0,
+            'ajustar_planchas': True,
+            'precio_planchas': 295000.0,
+            'ajustar_rentabilidad': True,
+            'rentabilidad_ajustada': 52.5
+        }
+        
+        # Datos del formulario
+        self.form_data = {
+            'ancho': 85.0,
+            'avance': 125.0,
+            'pistas': 2,
+            'num_tintas': 5,
+            'escalas': [1000, 3000, 5000],
+            'es_manga': False,
+            'material_id': 1,
+            'adhesivo_id': 1,
+            'acabado_id': 2,
+            'tiene_troquel': False,
+            'planchas_separadas': True,
+        }
+        
+    def _simular_guardado(self, ajustes_admin: dict, form_data: dict) -> dict:
+        """
+        Simula la creación de datos_calculo_persistir que se guardan en BD.
+        Replica la lógica de handle_calculation líneas ~439-472.
+        """
+        return {
+            'valor_material': ajustes_admin.get('valor_material_ajustado', 1800.0) 
+                             if ajustes_admin.get('ajustar_material') else 1800.0,
+            'valor_plancha': ajustes_admin.get('precio_planchas', 180000.0)
+                            if ajustes_admin.get('ajustar_planchas') else 180000.0,
+            'valor_acabado': 500.0,
+            'valor_troquel': ajustes_admin.get('precio_troquel', 825000.0)
+                            if ajustes_admin.get('ajustar_troquel') else 825000.0,
+            'rentabilidad': (ajustes_admin.get('rentabilidad_ajustada', 40.0) / 100.0)
+                           if ajustes_admin.get('ajustar_rentabilidad') else 0.40,
+            'avance': form_data['avance'],
+            'ancho': form_data['ancho'],
+            'existe_troquel': form_data.get('tiene_troquel', False),
+            'planchas_x_separado': form_data.get('planchas_separadas', False),
+            'num_tintas': form_data['num_tintas'],
+            'numero_pistas': form_data['pistas'],
+            'tipo_grafado_id': form_data.get('tipo_grafado_id'),
+            'acabado_id': form_data.get('acabado_id'),
+            'parametros_especiales': {
+                'ajustar_material': bool(ajustes_admin.get('ajustar_material', False)),
+                'valor_material_ajustado': ajustes_admin.get('valor_material_ajustado'),
+                'ajustar_troquel': bool(ajustes_admin.get('ajustar_troquel', False)),
+                'precio_troquel': ajustes_admin.get('precio_troquel'),
+                'ajustar_planchas': bool(ajustes_admin.get('ajustar_planchas', False)),
+                'precio_planchas': ajustes_admin.get('precio_planchas'),
+                'ajustar_rentabilidad': bool(ajustes_admin.get('ajustar_rentabilidad', False)),
+                'rentabilidad_ajustada': ajustes_admin.get('rentabilidad_ajustada')
+            }
+        }
+    
+    def _simular_carga(self, datos_guardados: dict) -> dict:
+        """
+        Simula la recarga de parametros_especiales al session_state.
+        Replica la lógica de app_calculadora_costos.py línea ~859.
+        """
+        session_state_nuevo = {}
+        params_esp = datos_guardados.get('parametros_especiales', {})
+        
+        if params_esp:
+            for key, value in params_esp.items():
+                if value is not None:
+                    session_state_nuevo[key] = value
+                    
+        return session_state_nuevo
+    
+    def test_ciclo_completo_guardar_cargar(self):
+        """
+        Test que verifica el ciclo completo:
+        1. Usuario configura ajustes admin
+        2. Se guarda cotización con parametros_especiales
+        3. Se recarga cotización
+        4. Los ajustes admin se restauran correctamente
+        """
+        # PASO 1: Simular guardado con ajustes admin
+        datos_guardados = self._simular_guardado(self.ajustes_admin, self.form_data)
+        
+        # Verificar que los datos se prepararon correctamente
+        self.assertEqual(datos_guardados['valor_material'], 2750.0)
+        self.assertEqual(datos_guardados['valor_troquel'], 875000.0)
+        self.assertEqual(datos_guardados['valor_plancha'], 295000.0)
+        self.assertAlmostEqual(datos_guardados['rentabilidad'], 0.525, places=3)
+        
+        # PASO 2: Simular carga desde BD
+        session_state_restaurado = self._simular_carga(datos_guardados)
+        
+        # PASO 3: Verificar que los ajustes se restauraron
+        self.assertTrue(session_state_restaurado.get('ajustar_material'))
+        self.assertEqual(session_state_restaurado.get('valor_material_ajustado'), 2750.0)
+        
+        self.assertTrue(session_state_restaurado.get('ajustar_troquel'))
+        self.assertEqual(session_state_restaurado.get('precio_troquel'), 875000.0)
+        
+        self.assertTrue(session_state_restaurado.get('ajustar_planchas'))
+        self.assertEqual(session_state_restaurado.get('precio_planchas'), 295000.0)
+        
+        self.assertTrue(session_state_restaurado.get('ajustar_rentabilidad'))
+        self.assertEqual(session_state_restaurado.get('rentabilidad_ajustada'), 52.5)
+        
+    def test_ciclo_sin_ajustes_admin(self):
+        """Verifica ciclo cuando no hay ajustes administrativos."""
+        ajustes_vacios = {
+            'ajustar_material': False,
+            'ajustar_troquel': False,
+            'ajustar_planchas': False,
+            'ajustar_rentabilidad': False,
+        }
+        
+        datos_guardados = self._simular_guardado(ajustes_vacios, self.form_data)
+        session_state_restaurado = self._simular_carga(datos_guardados)
+        
+        # Todos los flags deberían ser False
+        self.assertFalse(session_state_restaurado.get('ajustar_material', False))
+        self.assertFalse(session_state_restaurado.get('ajustar_troquel', False))
+        self.assertFalse(session_state_restaurado.get('ajustar_planchas', False))
+        self.assertFalse(session_state_restaurado.get('ajustar_rentabilidad', False))
+        
+    def test_ciclo_ajustes_parciales(self):
+        """Verifica ciclo cuando solo algunos ajustes están activos."""
+        ajustes_parciales = {
+            'ajustar_material': True,
+            'valor_material_ajustado': 3000.0,
+            'ajustar_troquel': False,
+            'ajustar_planchas': False,
+            'ajustar_rentabilidad': True,
+            'rentabilidad_ajustada': 48.0
+        }
+        
+        datos_guardados = self._simular_guardado(ajustes_parciales, self.form_data)
+        session_state_restaurado = self._simular_carga(datos_guardados)
+        
+        # Material activado
+        self.assertTrue(session_state_restaurado.get('ajustar_material'))
+        self.assertEqual(session_state_restaurado.get('valor_material_ajustado'), 3000.0)
+        
+        # Troquel y planchas desactivados
+        self.assertFalse(session_state_restaurado.get('ajustar_troquel', False))
+        self.assertFalse(session_state_restaurado.get('ajustar_planchas', False))
+        
+        # Rentabilidad activada
+        self.assertTrue(session_state_restaurado.get('ajustar_rentabilidad'))
+        self.assertEqual(session_state_restaurado.get('rentabilidad_ajustada'), 48.0)
+        
+    def test_recalculo_mantiene_valores_originales(self):
+        """
+        Verifica que al recalcular una cotización editada,
+        los valores ajustados se usan correctamente.
+        """
+        # Primera cotización con ajustes
+        datos_guardados = self._simular_guardado(self.ajustes_admin, self.form_data)
+        session_state_restaurado = self._simular_carga(datos_guardados)
+        
+        # Simular que el usuario hace un recálculo con los mismos ajustes
+        # (como si presionara "Calcular" de nuevo)
+        datos_recalculados = self._simular_guardado(session_state_restaurado, self.form_data)
+        
+        # Los valores deberían ser idénticos
+        self.assertEqual(
+            datos_recalculados['parametros_especiales']['valor_material_ajustado'],
+            datos_guardados['parametros_especiales']['valor_material_ajustado']
+        )
+        self.assertEqual(
+            datos_recalculados['parametros_especiales']['precio_troquel'],
+            datos_guardados['parametros_especiales']['precio_troquel']
+        )
+        self.assertEqual(
+            datos_recalculados['parametros_especiales']['precio_planchas'],
+            datos_guardados['parametros_especiales']['precio_planchas']
+        )
+        self.assertEqual(
+            datos_recalculados['parametros_especiales']['rentabilidad_ajustada'],
+            datos_guardados['parametros_especiales']['rentabilidad_ajustada']
+        )
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
