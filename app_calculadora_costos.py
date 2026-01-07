@@ -5,7 +5,14 @@ import pandas as pd
 import traceback # Import traceback for detailed error logging
 import math
 import time
-from datetime import datetime # <-- AÑADIR IMPORTACIÓN
+from datetime import datetime
+
+# Logging configuration
+from src.config.logging_config import get_logger, configure_root_logger, DEBUG, INFO
+
+# Configure root logger at startup
+configure_root_logger(level=INFO)
+logger = get_logger(__name__)
 
 # Configuración de página - MOVER AL INICIO
 st.set_page_config(
@@ -166,8 +173,9 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
     """
     try:
         # Debug inicial para rastrear flujo del cálculo
-        print("\n======= INICIO DEL PROCESO DE CÁLCULO =======")
-        print(f"Datos recibidos: es_manga={form_data.get('es_manga')}, num_tintas={form_data.get('num_tintas')}, acabado_id={form_data.get('acabado_id')}")
+        logger.info("======= INICIO DEL PROCESO DE CÁLCULO =======")
+        logger.debug("Datos recibidos: es_manga=%s, num_tintas=%s, acabado_id=%s", 
+                     form_data.get('es_manga'), form_data.get('num_tintas'), form_data.get('acabado_id'))
         
         # Validar datos necesarios
         required_fields = ['ancho', 'avance', 'pistas', 'num_tintas', 'num_paquetes', 
@@ -183,17 +191,16 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             return None
         
         # Debug de form_data y ajustes admin
-        print("\n=== DEBUG FORM DATA ===")
-        print("Valores recibidos del formulario:")
+        logger.debug("=== FORM DATA ===")
         for key, value in form_data.items():
-            print(f"{key}: {value} (tipo: {type(value)})")
+            logger.debug("%s: %s (tipo: %s)", key, value, type(value).__name__)
         
         if st.session_state.usuario_rol == 'administrador':
-            print("\n=== DEBUG AJUSTES ADMIN ===")
-            print(f"Ajustar Material: {st.session_state.get('ajustar_material')}, Valor: {st.session_state.get('valor_material_ajustado')}")
-            print(f"Ajustar Troquel: {st.session_state.get('ajustar_troquel')}, Valor: {st.session_state.get('precio_troquel')}")
-            print(f"Ajustar Planchas: {st.session_state.get('ajustar_planchas')}, Valor: {st.session_state.get('precio_planchas')}")
-            print(f"Ajustar Rentabilidad: {st.session_state.get('rentabilidad_ajustada')}")
+            logger.debug("=== AJUSTES ADMIN ===")
+            logger.debug("Material: ajustar=%s, valor=%s", st.session_state.get('ajustar_material'), st.session_state.get('valor_material_ajustado'))
+            logger.debug("Troquel: ajustar=%s, valor=%s", st.session_state.get('ajustar_troquel'), st.session_state.get('precio_troquel'))
+            logger.debug("Planchas: ajustar=%s, valor=%s", st.session_state.get('ajustar_planchas'), st.session_state.get('precio_planchas'))
+            logger.debug("Rentabilidad ajustada: %s", st.session_state.get('rentabilidad_ajustada'))
         
         # Crear instancia de calculadora
         calculadora = CalculadoraCostosEscala(ancho_maximo=ANCHO_MAXIMO_MAQUINA)
@@ -214,128 +221,99 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
 
         if not es_manga and adhesivo_id:
             # Etiqueta con adhesivo: Buscar valor combinado
-            print(f"Buscando valor para Material ID: {material_id}, Adhesivo ID: {adhesivo_id}")
+            logger.debug("Buscando valor para Material ID: %s, Adhesivo ID: %s", material_id, adhesivo_id)
             valor_combinado = st.session_state.db.get_material_adhesivo_valor(material_id, adhesivo_id)
             if valor_combinado is not None:
                 valor_material_base = valor_combinado
-                print(f"Valor combinado encontrado: {valor_material_base}")
+                logger.debug("Valor combinado encontrado: %s", valor_material_base)
             else:
                 st.error(f"No se encontró precio para la combinación de Material ID {material_id} y Adhesivo ID {adhesivo_id}. Por favor, verifique la configuración.")
-                return None # Stop calculation if price not found
+                return None
         elif not es_manga and not adhesivo_id:
-            # Etiqueta SIN adhesivo seleccionado - REQUERIDO?
             st.error("Para Etiquetas, debe seleccionar un Adhesivo.")
-            # Alternative: Fetch base material price if adhesive is optional
-            # material = st.session_state.db.get_material(material_id)
-            # if material:
-            #     valor_material_base = material.valor
-            # else:
-            #     st.error(f"Material base ID {material_id} no encontrado.")
-            #     return None
-            return None # Assuming adhesive is required for etiquetas for now
+            return None
         elif es_manga:
             # Manga: Buscar valor usando el ID del material y el ID de "Sin adhesivo"
-            print(f"Buscando valor para Material ID (Manga): {material_id}, Adhesivo ID: {ID_SIN_ADHESIVO}")
+            logger.debug("Buscando valor para Material ID (Manga): %s, Adhesivo ID: %s", material_id, ID_SIN_ADHESIVO)
             valor_manga = st.session_state.db.get_material_adhesivo_valor(material_id, ID_SIN_ADHESIVO)
             if valor_manga is not None:
                 valor_material_base = valor_manga
-                print(f"Valor encontrado para manga: {valor_material_base}")
+                logger.debug("Valor encontrado para manga: %s", valor_material_base)
             else:
-                st.error(f"No se encontró precio base para el Material de Manga ID {material_id} (con adhesivo 'Sin adhesivo'). Verifique la tabla material_adhesivo.")
+                st.error(f"No se encontró precio base para el Material de Manga ID {material_id}. Verifique la tabla material_adhesivo.")
                 return None
-        # --- Fin Determinar Valor Material ---
 
         # === Aplicar Ajustes Admin (si existen y están activos) ===
         valor_material = valor_material_base # Start with the fetched value
         if st.session_state.get('ajustar_material'):
             valor_material = st.session_state.get('valor_material_ajustado', valor_material)
-            print(f"ADMIN: Usando valor material ajustado: {valor_material}")
+            logger.debug("ADMIN: Usando valor material ajustado: %s", valor_material)
 
         # --- Troquel Cost Logic --- 
         valor_troquel_a_pasar = None # Default to None (signal internal calculation)
         if st.session_state.get('ajustar_troquel'):
-            valor_troquel_a_pasar = st.session_state.get('precio_troquel', 0.0) # Use admin value if adjusting
-            print(f"ADMIN: Usando valor troquel ajustado: {valor_troquel_a_pasar}")
-        # Else: valor_troquel_a_pasar remains None
-        # --- End Troquel Cost Logic ---
+            valor_troquel_a_pasar = st.session_state.get('precio_troquel', 0.0)
+            logger.debug("ADMIN: Usando valor troquel ajustado: %s", valor_troquel_a_pasar)
         
-        # --- Plate cost Logic (already correct, but confirming) ---
+        # --- Plate cost Logic ---
         valor_plancha_a_pasar = None # Default to None (signal internal calculation)
         if st.session_state.get('ajustar_planchas'):
-            # Use the TOTAL adjusted price directly
             valor_plancha_a_pasar = st.session_state.get('precio_planchas', 0.0)
-            print(f"ADMIN: Usando valor TOTAL de planchas ajustado: {valor_plancha_a_pasar}")
-        # Else: valor_plancha_a_pasar remains None
-        # --- End Plate cost Logic ---
+            logger.debug("ADMIN: Usando valor TOTAL de planchas ajustado: %s", valor_plancha_a_pasar)
 
         rentabilidad = RENTABILIDAD_MANGAS if es_manga else RENTABILIDAD_ETIQUETAS
         rentabilidad_ajustada = st.session_state.get('rentabilidad_ajustada')
         if rentabilidad_ajustada is not None and rentabilidad_ajustada > 0:
-            rentabilidad = rentabilidad_ajustada / 100.0  # Convertir % a decimal
-            print(f"ADMIN: Usando rentabilidad ajustada: {rentabilidad}")
+            rentabilidad = rentabilidad_ajustada / 100.0
+            logger.debug("ADMIN: Usando rentabilidad ajustada: %s", rentabilidad)
         else:
-            print(f"Usando rentabilidad por defecto: {rentabilidad}")
+            logger.debug("Usando rentabilidad por defecto: %s", rentabilidad)
 
         # Procesar troquel_existe explícitamente
         troquel_existe = form_data.get('tiene_troquel')
-        print(f"\n=== DEBUG TROQUEL EXISTE ===")
-        print(f"Valor original: {troquel_existe} (tipo: {type(troquel_existe)})")
+        logger.debug("TROQUEL - Valor original: %s (tipo: %s)", troquel_existe, type(troquel_existe).__name__)
         
-        # Conversión más explícita y segura a booleano
+        # Conversión a booleano
         if isinstance(troquel_existe, str):
             troquel_existe_lower = troquel_existe.lower()
-            # Para el caso específico de "Sí"/"No" de la UI
             if troquel_existe == "Sí":
                 troquel_existe = True
             elif troquel_existe == "No":
                 troquel_existe = False
             else:
-                # Para otros casos de string
-                troquel_existe = troquel_existe_lower == 'true' or troquel_existe_lower == 'yes' or troquel_existe_lower == '1'
+                troquel_existe = troquel_existe_lower in ('true', 'yes', '1')
         elif isinstance(troquel_existe, (int, float)):
             troquel_existe = troquel_existe > 0
         else:
             troquel_existe = bool(troquel_existe)
             
-        print(f"Valor procesado: {troquel_existe} (tipo: {type(troquel_existe)})")
+        logger.debug("TROQUEL - Valor procesado: %s", troquel_existe)
         
         # Ajustar el ancho si es manga
         ancho_base = form_data['ancho']
         if es_manga:
-            # Caso excepcional: Fundas Transparentes (0 Tintas)
             if form_data.get('num_tintas', 0) == 0:
                 ancho_ajustado = (ancho_base * 2) + 6
-                print(f"\n=== AJUSTE DE ANCHO PARA MANGA - FUNDA TRANSPARENTE (0 TINTAS) ===")
-                print(f"Ancho original (cerrado): {ancho_base}")
-                print(f"Fórmula aplicada: (ancho * 2) + 6 = ({ancho_base} * 2) + 6 = {ancho_ajustado}")
-                # Validación de máximo permitido 415mm (efectivo)
+                logger.debug("MANGA FUNDA TRANSPARENTE - Ancho: %s -> %s", ancho_base, ancho_ajustado)
                 if ancho_ajustado > 415:
-                    st.error(f"El ancho efectivo ({ancho_ajustado:.2f} mm) excede el máximo permitido (415 mm) para fundas transparentes.")
+                    st.error(f"El ancho efectivo ({ancho_ajustado:.2f} mm) excede el máximo permitido (415 mm).")
                     return None
-                # Restricción de grafado: >325mm no permite grafado
                 if ancho_ajustado > 325:
-                    # Forzar grafado a 'Sin grafado' (ID=1) si es necesario
                     try:
                         if form_data.get('tipo_grafado_id') not in (None, 1):
-                            print("Grafado no permitido (>325mm) en funda transparente. Forzando 'Sin grafado'.")
+                            logger.debug("Grafado no permitido (>325mm). Forzando 'Sin grafado'.")
                             form_data['tipo_grafado_id'] = 1
                             form_data['tipo_grafado_nombre'] = 'Sin grafado'
                     except Exception:
                         pass
             else:
                 ancho_ajustado = (ancho_base * FACTOR_ANCHO_MANGAS) + INCREMENTO_ANCHO_MANGAS
-                print(f"\n=== AJUSTE DE ANCHO PARA MANGA ===")
-                print(f"Ancho original: {ancho_base}")
-                print(f"Factor manga: {FACTOR_ANCHO_MANGAS}")
-                print(f"Incremento manga: {INCREMENTO_ANCHO_MANGAS}")
-                print(f"Ancho ajustado: ({ancho_base} * {FACTOR_ANCHO_MANGAS}) + {INCREMENTO_ANCHO_MANGAS} = {ancho_ajustado}")
+                logger.debug("MANGA - Ancho: %s * %s + %s = %s", ancho_base, FACTOR_ANCHO_MANGAS, INCREMENTO_ANCHO_MANGAS, ancho_ajustado)
         else:
             ancho_ajustado = ancho_base
         
-        # Usar las escalas definidas por el usuario
-        # Imprimir el valor de troquel_existe justo antes de asignarlo
-        print(f"\n=== DEBUG TROQUEL EXISTE JUSTO ANTES DE CREAR DATOS_ESCALA ===")
-        print(f"Valor a asignar a datos_escala.troquel_existe: {troquel_existe} (tipo: {type(troquel_existe)})")
+        # Crear datos de escala
+        logger.debug("Creando DatosEscala con troquel_existe=%s", troquel_existe)
         
         datos_escala = DatosEscala(
             escalas=form_data['escalas'],
@@ -346,27 +324,22 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             desperdicio=0,
             velocidad_maquina=VELOCIDAD_MAQUINA_MANGAS_7_TINTAS if (es_manga and num_tintas >= 7) 
                             else VELOCIDAD_MAQUINA_NORMAL,
-            rentabilidad=rentabilidad,  # Usar la rentabilidad determinada (ajustada o defecto)
+            rentabilidad=rentabilidad,
             porcentaje_desperdicio=DESPERDICIO_MANGAS if es_manga else DESPERDICIO_ETIQUETAS,
-            valor_metro=valor_material, # Usar el valor de material determinado (combinado/base + ajustado)
+            valor_metro=valor_material,
             troquel_existe=troquel_existe,
             planchas_por_separado=form_data.get('planchas_separadas', False),
             unidad_montaje_dientes=form_data.get('unidad_montaje_dientes')
         )
         
-        # Verificar inmediatamente después de crear datos_escala
-        print(f"\n=== DEBUG TROQUEL EXISTE INMEDIATAMENTE DESPUÉS DE CREAR DATOS_ESCALA ===")
-        print(f"Valor asignado a datos_escala.troquel_existe: {datos_escala.troquel_existe} (tipo: {type(datos_escala.troquel_existe)})")
+        logger.debug("DatosEscala creado - troquel_existe=%s", datos_escala.troquel_existe)
         
         # --- Calcular Mejor Opción de Desperdicio UNA VEZ ---
-        calc_lito = CalculadoraLitografia() # Necesitamos instancia para obtener mejor opción
+        calc_lito = CalculadoraLitografia()
         try:
-            # Si el usuario ha seleccionado una unidad específica, usar esa unidad
             if form_data.get('unidad_montaje_dientes') is not None:
-                print(f"\n=== USANDO UNIDAD ESPECÍFICA DEL USUARIO ===")
-                print(f"Unidad seleccionada por el usuario: {form_data.get('unidad_montaje_dientes')} dientes")
+                logger.debug("Usando unidad específica del usuario: %s dientes", form_data.get('unidad_montaje_dientes'))
                 
-                # Obtener la mejor opción para la unidad específica usando la calculadora de desperdicios
                 from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdicio
                 calc_desp = CalculadoraDesperdicio(es_manga=es_manga)
                 mejor_opcion = calc_desp.obtener_mejor_opcion_para_unidad(
@@ -374,17 +347,18 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
                     form_data.get('unidad_montaje_dientes')
                 )
                 if mejor_opcion is None:
-                    st.error(f"No se encontró una configuración válida para la unidad de {form_data.get('unidad_montaje_dientes')} dientes.")
+                    st.error(f"No se encontró configuración válida para {form_data.get('unidad_montaje_dientes')} dientes.")
                     return None
-                print(f"Mejor opción para unidad específica: Dientes={mejor_opcion.dientes}, Reps={mejor_opcion.repeticiones}, Medida={mejor_opcion.medida_mm}, Desp={mejor_opcion.desperdicio:.4f}")
+                logger.debug("Mejor opción (unidad específica): Dientes=%s, Reps=%s, Desp=%.4f", 
+                            mejor_opcion.dientes, mejor_opcion.repeticiones, mejor_opcion.desperdicio)
             else:
-                # Usar la mejor opción global
-                print(f"\n=== USANDO MEJOR OPCIÓN GLOBAL ===")
+                logger.debug("Usando mejor opción global")
                 mejor_opcion = calc_lito.obtener_mejor_opcion_desperdicio(datos_escala, es_manga)
                 if mejor_opcion is None:
-                    st.error("No se encontró una configuración de cilindro/repetición válida para este avance.")
+                    st.error("No se encontró configuración de cilindro/repetición válida.")
                     return None
-                print(f"Mejor opción global: Dientes={mejor_opcion.dientes}, Reps={mejor_opcion.repeticiones}, Medida={mejor_opcion.medida_mm}, Desp={mejor_opcion.desperdicio:.4f}")
+                logger.debug("Mejor opción (global): Dientes=%s, Reps=%s, Desp=%.4f", 
+                            mejor_opcion.dientes, mejor_opcion.repeticiones, mejor_opcion.desperdicio)
         except ValueError as e_desp:
             st.error(f"Error determinando la mejor opción de desperdicio: {e_desp}")
             return None
@@ -406,20 +380,13 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
         num_tintas_ajustado = num_tintas
         if not es_manga and acabado_id in [3, 4, 5, 6]:
             num_tintas_ajustado = num_tintas + 1
-            print(f"\n=== AJUSTE DE TINTAS POR ACABADO ESPECIAL ===")
-            print(f"Tintas originales seleccionadas: {num_tintas}")
-            print(f"Acabado ID {acabado_id} requiere 1 tinta adicional")
-            print(f"Tintas ajustadas para cálculos: {num_tintas_ajustado}")
+            logger.debug("Acabado especial: tintas %s -> %s (+1)", num_tintas, num_tintas_ajustado)
             
-            # Validar que no se exceda el límite
             if num_tintas_ajustado > 7:
-                st.error(f"El acabado seleccionado requiere 1 tinta adicional en el cálculo. "
-                         f"Con las {num_tintas} tintas seleccionadas, se excede el máximo de 7 tintas "
-                         f"permitidas. Para este acabado, seleccione máximo 6 tintas.")
+                st.error(f"El acabado requiere 1 tinta adicional. Con {num_tintas} tintas, se excede el máximo de 7.")
                 return None
         else:
-            print(f"\n=== SIN AJUSTE DE TINTAS ===")
-            print(f"Tintas seleccionadas: {num_tintas} (sin ajuste)")
+            logger.debug("Tintas sin ajuste: %s", num_tintas)
             
         # A partir de este punto, usamos num_tintas_ajustado para todos los cálculos internos
         
@@ -444,11 +411,7 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             else:
                  valor_troquel_defecto = troquel_result.get('valor', 0.0)
             
-            # Imprimir el valor calculado para depuración
-            print(f"\n=== DEBUG VALOR TROQUEL CALCULADO ===")
-            print(f"Valor troquel calculado: {valor_troquel_defecto}")
-            print(f"Unidad montaje elegida: {form_data.get('unidad_montaje_dientes')}")
-            print(f"Troquel existe: {datos_escala.troquel_existe}")
+            logger.debug("Troquel calculado: valor=%s, troquel_existe=%s", valor_troquel_defecto, datos_escala.troquel_existe)
 
         # Calcular valor_plancha por defecto (si no ajustado)
         valor_plancha_defecto = 0.0
@@ -469,17 +432,9 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
                      if plancha_result.get('detalles'):
                         precio_sin_constante = plancha_result['detalles'].get('precio_sin_constante')
 
-        # Verificar que el valor de troquel_existe se haya asignado correctamente a datos_escala
-        print(f"\n=== DEBUG TROQUEL EXISTE EN DATOS_ESCALA ===")
-        print(f"Valor en datos_escala.troquel_existe: {datos_escala.troquel_existe} (tipo: {type(datos_escala.troquel_existe)})")
-        
-        # Verificar el valor de troquel_existe en form_data
-        print(f"\n=== DEBUG TROQUEL EXISTE EN FORM_DATA ===")
-        print(f"Valor en form_data['tiene_troquel']: {form_data.get('tiene_troquel')} (tipo: {type(form_data.get('tiene_troquel'))})")
-        
-        # Verificar el valor procesado antes de asignarlo a datos_escala
-        print(f"\n=== DEBUG TROQUEL EXISTE ANTES DE ASIGNAR A DATOS_ESCALA ===")
-        print(f"Valor de troquel_existe: {troquel_existe} (tipo: {type(troquel_existe)})")
+        # Debug: verificar valores de troquel
+        logger.debug("Troquel check - datos_escala: %s, form_data: %s, procesado: %s", 
+                     datos_escala.troquel_existe, form_data.get('tiene_troquel'), troquel_existe)
         
         datos_calculo_persistir = {
             'valor_material': valor_material, # Valor final usado
@@ -516,9 +471,7 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             }
         }
         
-        # Verificar el valor final guardado en datos_calculo_persistir
-        print(f"\n=== DEBUG TROQUEL EXISTE EN DATOS_CALCULO_PERSISTIR ===")
-        print(f"Valor guardado: {datos_calculo_persistir['existe_troquel']} (tipo: {type(datos_calculo_persistir['existe_troquel'])})")
+        logger.debug("datos_calculo_persistir - existe_troquel: %s", datos_calculo_persistir['existe_troquel'])
         
         # --- Aplicar Fórmula de Redondeo a valor_plancha_separado --- 
         valor_plancha_separado_base = None
@@ -532,23 +485,19 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
         if datos_calculo_persistir['planchas_x_separado'] and valor_plancha_separado_base is not None and valor_plancha_separado_base > 0:
             try:
                 valor_dividido = valor_plancha_separado_base / 0.7
-                # Redondear hacia arriba al siguiente múltiplo de 10000
                 valor_redondeado = math.ceil(valor_dividido / 10000) * 10000
-                datos_calculo_persistir['valor_plancha_separado'] = float(valor_redondeado) # Guardar como float
-                print(f"Valor plancha separado (Base: {valor_plancha_separado_base:.2f}, Dividido: {valor_dividido:.2f}, Redondeado: {valor_redondeado:.2f})")
+                datos_calculo_persistir['valor_plancha_separado'] = float(valor_redondeado)
+                logger.debug("Plancha separado: Base=%.2f, Dividido=%.2f, Redondeado=%.2f", 
+                            valor_plancha_separado_base, valor_dividido, valor_redondeado)
             except Exception as e_round:
-                print(f"Error aplicando redondeo a valor_plancha_separado: {e_round}")
-                datos_calculo_persistir['valor_plancha_separado'] = None # Poner None si hay error
+                logger.error("Error redondeo plancha_separado: %s", e_round)
+                datos_calculo_persistir['valor_plancha_separado'] = None
         else:
-            datos_calculo_persistir['valor_plancha_separado'] = None # Si no aplica o es cero
-        # -------------------------------------------------------------
+            datos_calculo_persistir['valor_plancha_separado'] = None
 
         # Realizar cálculos principales por escala
-        print(f"\n=== REALIZAR CÁLCULOS PRINCIPALES POR ESCALA ===")
-        print(f"  - Tintas originales: {num_tintas}")
-        print(f"  - Tintas ajustadas: {num_tintas_ajustado}")
-        print(f"  - Es manga: {es_manga}")
-        print(f"  - Acabado ID: {acabado_id}")
+        logger.info("Calculando costos por escala: tintas=%s->%s, es_manga=%s, acabado=%s", 
+                    num_tintas, num_tintas_ajustado, es_manga, acabado_id)
 
         resultados = calculadora.calcular_costos_por_escala(
             datos=datos_escala,
@@ -564,8 +513,8 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
         )
         
         if resultados:
-            # --- NUEVO: Preparar modelo Cotizacion usando CotizacionManager --- 
-            print("\nCálculo exitoso. Preparando modelo de cotización...")
+            # Preparar modelo Cotizacion usando CotizacionManager
+            logger.info("Cálculo exitoso. Preparando modelo de cotización...")
             try:
                 manager = st.session_state.cotizacion_manager
                 # Construir kwargs para el manager
@@ -601,14 +550,13 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
                     cotizacion_existente = st.session_state.get('cotizacion_model')
                     if cotizacion_existente and cotizacion_existente.id:
                         st.session_state.cotizacion_model = manager.actualizar_cotizacion_model(cotizacion_existente, **kwargs_modelo)
-                        print("Modelo Cotizacion actualizado para edición.")
+                        logger.debug("Modelo Cotizacion actualizado para edición.")
                     else:
                         st.error("Error: No se encontró el modelo de cotización existente para actualizar.")
                         return None
                 else:
-                    # Para nueva cotización, crear nuevo modelo
                     st.session_state.cotizacion_model = manager.preparar_nueva_cotizacion_model(**kwargs_modelo)
-                    print("Modelo Cotizacion preparado para nueva cotización.")
+                    logger.debug("Modelo Cotizacion preparado para nueva cotización.")
                 # --- FIN: Lógica para modo edición vs nueva cotización ---
                 st.session_state.cotizacion_calculada = True # Indicar que hay un cálculo listo
 
