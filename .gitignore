@@ -14,3 +14,4 @@ __pycache__
 .cursor
 node_modules
 .cursor/rules/mcp.json
+*.pdf
