@@ -177,15 +177,6 @@ class CalculadoraCostosEscala(CalculadoraBase):
         """
         Calcula el ancho total según la fórmula:
         ROUNDUP(IF(B2=0, ((E3*D3-C3)+10), ((E3*D3-C3)+20)), -1)
-        donde:
-        - B2 = número de tintas
-        - E3 = pistas
-        - C3 = valor fijo de 3
-        - D3 = ancho + C3
-        
-        Returns:
-            Tuple[float, str]: (ancho_total, mensaje_recomendacion)
-            El mensaje_recomendacion será None si no hay problemas
         """
         d3 = ancho + self.C3
         base = pistas * d3 - self.C3
@@ -214,9 +205,6 @@ class CalculadoraCostosEscala(CalculadoraBase):
     def calcular_metros(self, escala: int, datos: DatosEscala, es_manga: bool = False) -> float:
         """
         Calcula los metros según la fórmula: (Escala / Pistas) * ((Avance_total + Desperdicio_unidad) / 1000)
-        donde:
-        - Avance_total ya viene calculado en datos.avance_total (incluye el GAP correspondiente)
-        - Desperdicio_unidad = desperdicio por los dientes del troquel
         """
         try:
             # 1. Obtener la opción de desperdicio según la unidad de montaje elegida (si existe)
@@ -263,19 +251,6 @@ class CalculadoraCostosEscala(CalculadoraBase):
     def calcular_tiempo_horas(self, metros: float, datos: DatosEscala) -> float:
         """Calcula el tiempo en horas según la fórmula: metros / velocidad_maquina / 60"""
         tiempo = metros / datos.velocidad_maquina / 60
-        
-        # Debug detallado
-        debug_info = f"""
-=== DEBUG CÁLCULO DE TIEMPO ===
-Inputs:
-- Metros: {metros:.2f}
-- Velocidad máquina: {datos.velocidad_maquina:.2f} m/min
-
-Cálculo:
-1. Tiempo (horas) = {metros:.2f} / {datos.velocidad_maquina:.2f} / 60 = {tiempo:.2f}
-"""
-        print(debug_info)
-        
         return tiempo
         
     def calcular_montaje(self, num_tintas: int, datos: DatosEscala) -> float:
@@ -284,19 +259,7 @@ Cálculo:
         
     def calcular_mo_y_maq(self, tiempo_horas: float, num_tintas: int, datos: DatosEscala, es_manga: bool = False) -> float:
         """
-        Calcula MO y Maq según la fórmula:
-
-        Para etiquetas:
-        if Tintas > 0:
-            if t(h) < 1:
-                MO_y_Maq = MO_Impresion
-            else:
-                MO_y_Maq = MO_Impresion * t(h)
-        else:
-            if t_h < 1:
-                MO_y_Maq = MO_Troquelado
-            else:
-                MO_y_Maq = MO_Troquelado * t(h)
+        Calcula MO y Maq según la fórmula.
         """
         # Debug adicional para rastrear parámetros
         print(f"\n=== DEBUG CÁLCULO MO_Y_MAQ ===")
@@ -338,31 +301,15 @@ Cálculo:
         
         total_tintas = costo_variable + costo_fijo
         
-        print(f"\n=== CÁLCULO TINTAS ===")
-        print(f"Área etiqueta: {area_etiqueta:.2f} mm²")
-        print(f"Número tintas: {num_tintas}")
-        print(f"Costo variable: ${costo_variable:.2f}")
-        print(f"Costo fijo: ${costo_fijo:.2f}")
-        print(f"Total tintas: ${total_tintas:.2f}")
-        
         return total_tintas
         
     def calcular_papel_lam(self, escala: int, area_etiqueta: float, 
                           valor_material: float, valor_acabado: float) -> float:
-        print(f"DEBUG (papel_lam): Received valor_material = {valor_material}")
         if area_etiqueta <= 0:
             return 0
         
         costo_por_unidad = area_etiqueta * ((valor_material + valor_acabado) / 1000000)
         papel_lam = costo_por_unidad * escala
-        
-        print(f"\n=== CÁLCULO PAPEL/LAM ===")
-        print(f"Área etiqueta: {area_etiqueta:.2f} mm²")
-        print(f"Valor material (received): ${valor_material}/m²")
-        print(f"Valor acabado: ${valor_acabado}/m²")
-        print(f"Costo por unidad: ${costo_por_unidad:.6f}")
-        print(f"Escala: {escala}")
-        print(f"Total papel/lam: ${papel_lam:.2f}")
         
         return papel_lam
         
@@ -397,21 +344,6 @@ Cálculo:
                             es_manga: bool = False, s3_val: float = None) -> float:
         """
         Calcula el desperdicio total (tintas + material).
-        Fórmula:
-            desperdicio_total = desperdicio_tintas + desperdicio_material
-            desperdicio_tintas = MM_COLOR * num_tintas * S3 * (valor_material / 1_000_000)
-            desperdicio_material = papel_lam * porcentaje_desperdicio
-        Args:
-            num_tintas (int): Número de tintas
-            ancho (float): Ancho físico
-            papel_lam (float): Costo de papel/laminado
-            valor_material (float): Precio por mm² del material
-            datos (DatosEscala): Parámetros de la escala
-            porcentaje_desperdicio (float): Porcentaje de desperdicio (ej: 0.1)
-            es_manga (bool): True si es manga
-            s3_val (float, opcional): S3 precalculado
-        Returns:
-            float: Desperdicio total
         """
         self._validar_inputs(datos, num_tintas, es_manga)
         # 1. Desperdicio por tintas
@@ -430,39 +362,19 @@ Cálculo:
         
         desperdicio_total = desperdicio_tintas + desperdicio_material
         
-        print(f"\n=== CÁLCULO DESPERDICIO ===")
-        print(f"Desperdicio tintas: ${desperdicio_tintas:.2f}")
-        print(f"Desperdicio material: ${desperdicio_material:.2f}")
-        print(f"Desperdicio total: ${desperdicio_total:.2f}")
-        
         return desperdicio_total
         
     def calcular_valor_plancha(self, datos: DatosEscala, num_tintas: int, es_manga: bool = False, q3_val: float = None, s3_val: float = None) -> float:
         """
-        Calcula el valor de la plancha según la fórmula:
-            valor = (VALOR_MM_PLANCHA * S3 * S4 * num_tintas) / constante
-        Donde:
-            - S3 = GAP_FIJO + Q3 (ancho total ajustado)
-            - S4 = mm_unidad_montaje + AVANCE_FIJO
-            - constante = 10000000 si planchas_por_separado, 1 si no
-        Args:
-            datos (DatosEscala): Parámetros de la escala
-            num_tintas (int): Número de tintas
-            es_manga (bool): True si es manga
-            q3_val (float, opcional): Q3 precalculado
-            s3_val (float, opcional): S3 precalculado
-        Returns:
-            float: Valor de la plancha
+        Calcula el valor de la plancha utilizando el método base en CalculadoraBase.
         """
         self._validar_inputs(datos, num_tintas, es_manga)
         try:
             # 1. Calcular Q3 (ancho total ajustado) solo si no se pasa
             if q3_val is None or s3_val is None:
                 q3_result = self.calcular_q3(datos.ancho, datos.pistas, es_manga)
-                q3 = q3_result['q3']
-                s3 = self.GAP_FIJO + q3
+                s3 = self.GAP_FIJO + q3_result['q3']
             else:
-                q3 = q3_val
                 s3 = s3_val
             
             # 3. Obtener medida de montaje respetando la unidad elegida
@@ -483,98 +395,54 @@ Cálculo:
                 raise ValueError("No se pudo determinar la unidad de montaje")
             mm_unidad_montaje = mejor_opcion.medida_mm
             
-            # 4. Calcular S4 = mm_unidad_montaje + AVANCE_FIJO
-            s4 = mm_unidad_montaje + 30  # AVANCE_FIJO = 30
+            print("\n=== CÁLCULO DE PLANCHA (Refactorizado) ===")
             
-            # 5. Calcular precio sin aplicar constante
-            precio_sin_constante = self.VALOR_MM_PLANCHA * s3 * s4 * num_tintas
+            # 4. Llamar al método base
+            resultado_base = self.calcular_precio_plancha_base(
+                s3=s3,
+                mm_unidad_montaje=mm_unidad_montaje,
+                num_tintas=num_tintas,
+                planchas_por_separado=datos.planchas_por_separado
+            )
             
-            # 6. Determinar constante según si las planchas se cobran por separado
-            constante = 10000000 if datos.planchas_por_separado else 1
-            
-            # 7. Calcular precio final
-            precio = precio_sin_constante / constante
-            
-            print("\n=== CÁLCULO DE PLANCHA ===")
-            print(f"VALOR_MM: ${self.VALOR_MM_PLANCHA}/mm")
-            print(f"S3: {s3} mm")
-            print(f"S4: {s4} mm")
-            print(f"Número de tintas: {num_tintas}")
-            print(f"Planchas por separado: {datos.planchas_por_separado}")
-            print(f"Constante: {constante}")
-            print(f"Precio sin constante: ${precio_sin_constante:.2f}")
-            print(f"Precio final: ${precio:.2f}")
-            
-            return precio
+            return resultado_base['precio']
             
         except Exception as e:
             print(f"Error en cálculo de plancha: {str(e)}")
             return 0
 
-    def calcular_valor_troquel(self, datos: DatosEscala, es_manga: bool = False, tipo_grafado_id: Optional[int] = None, repeticiones: Optional[int] = None) -> float: # Added tipo_grafado_id and repeticiones
+    def calcular_valor_troquel(self, datos: DatosEscala, es_manga: bool = False, tipo_grafado_id: Optional[int] = None, repeticiones: Optional[int] = None) -> float:
         """
-        Calcula el valor del troquel según la fórmula del código original
-        
-        Args:
-            datos: Datos de la escala
-            es_manga: Si es manga o etiqueta
-            tipo_grafado_id: ID del tipo de grafado
-            repeticiones: Número de repeticiones (opcional, si no se proporciona se calcula automáticamente)
+        Calcula el valor del troquel utilizando el método base en CalculadoraBase.
         """
         try:
-            # Constantes
-            FACTOR_BASE = 25 * 5000  # 125,000
-            VALOR_MINIMO = 700000
-            
-            # Calcular valor base
-            perimetro = (datos.ancho + datos.avance) * 2
-            
+            print("\n=== CÁLCULO TROQUEL (Refactorizado) ===")
             # Si no se proporcionan repeticiones, calcularlas automáticamente
-            if repeticiones is None:
+            repeticiones_final = repeticiones
+            if repeticiones_final is None:
                 calculadora = self._get_calculadora_desperdicios(es_manga)
-                
-                # Si el usuario ha seleccionado una unidad específica, calcular las repeticiones óptimas para esa unidad
+                # (Lógica para determinar repeticiones igual que antes)
                 if getattr(datos, 'unidad_montaje_dientes', None) is not None:
-                    # Usar el nuevo método para obtener la mejor opción para esta unidad específica
                     mejor_opcion = calculadora.obtener_mejor_opcion_para_unidad(datos.avance, datos.unidad_montaje_dientes)
                     if mejor_opcion:
-                        repeticiones = mejor_opcion.repeticiones
-                
-                # Si no se ha seleccionado unidad o no se encontró una opción válida, usar la mejor opción global
-                if repeticiones is None:
-                    repeticiones = calculadora.obtener_mejor_opcion(datos.avance).repeticiones
-            valor_base = perimetro * datos.pistas * repeticiones * 100  # valor_mm = 100
-            valor_calculado = max(VALOR_MINIMO, valor_base)
+                        repeticiones_final = mejor_opcion.repeticiones
+                if repeticiones_final is None:
+                    repeticiones_final = calculadora.obtener_mejor_opcion(datos.avance).repeticiones
 
-            # Determinar factor de división CORRECTAMENTE
-            if es_manga:
-                # --- DEBUGGING ---
-                print(f"DEBUG (costos_escala): Received tipo_grafado_id = {repr(tipo_grafado_id)} (Type: {type(tipo_grafado_id)})")
-                # --- END DEBUGGING ---
-                # Lógica para mangas usando ID
-                factor_division = 1 if tipo_grafado_id == 4 else 2
-                print(f"ES MANGA (costos_escala) - Tipo grafado ID: {tipo_grafado_id}")
-            else:
-                # Lógica para etiquetas
-                factor_division = 2 if datos.troquel_existe else 1
-                print("ES ETIQUETA (costos_escala)")
-                print(f"Troquel existe: {datos.troquel_existe}")
+            resultado = self.calcular_valor_troquel_base(
+                ancho=datos.ancho,
+                avance=datos.avance,
+                pistas=datos.pistas,
+                repeticiones=repeticiones_final,
+                es_manga=es_manga,
+                troquel_existe=datos.troquel_existe,
+                tipo_grafado_id=tipo_grafado_id
+            )
 
-            print(f"Factor división seleccionado (costos_escala): {factor_division}")
+            # Imprimir detalles para debug (opcional, ya que el test los usa)
+            print(f"Valor final: ${resultado['valor']:,.2f}")
 
-            # Calcular valor final
-            valor_final = (FACTOR_BASE + valor_calculado) / factor_division
-
-            print("\n=== CÁLCULO TROQUEL (costos_escala) ===")
-            print(f"Perimetro: {perimetro:,.2f} mm")
-            print(f"Valor base: ${valor_base:,.2f}")
-            print(f"Valor calculado (max con mínimo): ${valor_calculado:,.2f}")
-            print(f"FACTOR_BASE: ${FACTOR_BASE:,.2f}")
-            print(f"Troquel existe: {datos.troquel_existe}")
-            print(f"Factor división: {factor_division}")
-            print(f"Valor final: ${valor_final:,.2f}")
-
-            return valor_final
+            return resultado['valor']
 
         except Exception as e:
             print(f"Error en cálculo de troquel (costos_escala): {str(e)}")
@@ -584,24 +452,6 @@ Cálculo:
                                  escala: int, valor_plancha: float, valor_troquel: float) -> float:
         """
         Calcula el valor por unidad basado en costos, rentabilidad y escala.
-        
-        El cálculo se basa en la fórmula:
-        valor_unidad = (costos_indirectos + costos_fijos) / escala
-        
-        Donde:
-        - costos_indirectos = suma_costos / factor_rentabilidad
-        - factor_rentabilidad = (100 - rentabilidad) / 100
-        - costos_fijos = valor_plancha + valor_troquel
-        
-        Args:
-            suma_costos: Suma de todos los costos variables (montaje, MO, tintas, papel/lam, desperdicio)
-            datos: Objeto DatosEscala con información de rentabilidad
-            escala: Número de unidades a producir
-            valor_plancha: Valor de las planchas (costo fijo)
-            valor_troquel: Valor del troquel (costo fijo, ya calculado con el factor de división correcto)
-            
-        Returns:
-            float: Valor por unidad calculado
         """
         try:
             # 1. Validar y convertir valores de entrada
@@ -609,57 +459,35 @@ Cálculo:
             valor_troquel = float(valor_troquel) if valor_troquel is not None else 0
             suma_costos = float(suma_costos) if suma_costos is not None else 0
             
-            # Imprimir información para depuración
-            print("\n=== DEPURACIÓN VALOR UNIDAD ===")
-            print(f"suma_costos: {suma_costos:.2f}")
-            print(f"rentabilidad: {datos.rentabilidad:.2f}%")
-            print(f"valor_plancha: {valor_plancha:.2f}")
-            print(f"valor_troquel (pre-calculado): {valor_troquel:.2f}")
-            print(f"escala: {escala:,}")
-            
             # 2. Validar escala
             if escala <= 0:
                 print("Error: Escala es cero o negativa, retornando 0")
                 return 0
             
             # 3. Calcular factor de rentabilidad CORRECTO
-            # Asegurarse que la rentabilidad está en formato decimal (e.g., 0.38 para 38%)
             if datos.rentabilidad >= 1:
-                # Si por alguna razón llega como porcentaje, convertir a decimal
                 rentabilidad_decimal = datos.rentabilidad / 100.0
-                print(f"ADVERTENCIA: Rentabilidad ({datos.rentabilidad}) parece estar en formato porcentaje. Convirtiendo a {rentabilidad_decimal:.4f}")
             else:
                 rentabilidad_decimal = datos.rentabilidad
             
-            # El factor para dividir el costo es (1 - margen)
             if rentabilidad_decimal >= 1:
-                 # Evitar división por cero o negativo si el margen es 100% o más
-                 print(f"ERROR: Rentabilidad decimal inválida ({rentabilidad_decimal:.4f}), no se puede calcular el precio.")
                  return 0
             factor_rentabilidad = 1 - rentabilidad_decimal
-            print(f"rentabilidad_decimal: {rentabilidad_decimal:.4f}")
-            print(f"factor_rentabilidad (1 - rentabilidad_decimal): {factor_rentabilidad:.4f}")
             
             # 4. Calcular costos indirectos (ajustados por rentabilidad)
-            # Evitar división por cero si factor_rentabilidad es 0 (margen 100%)
             if factor_rentabilidad <= 0:
-                print(f"ERROR: Factor de rentabilidad es cero o negativo ({factor_rentabilidad:.4f}). No se puede calcular costos indirectos.")
-                costos_indirectos = float('inf') # o manejar como error
+                costos_indirectos = float('inf')
             else:
                 costos_indirectos = suma_costos / factor_rentabilidad
-            print(f"costos_indirectos: {suma_costos:.2f} / {factor_rentabilidad:.4f} = {costos_indirectos:.2f}")
             
             # 5. Usar el valor del troquel directamente sin recalcular
             costos_fijos = valor_plancha + valor_troquel
-            print(f"costos_fijos: {valor_plancha:.2f} + {valor_troquel:.2f} = {costos_fijos:.2f}")
             
             # 6. Calcular costos totales
             costos_totales = costos_indirectos + costos_fijos
-            print(f"costos_totales: {costos_indirectos:.2f} + {costos_fijos:.2f} = {costos_totales:.2f}")
             
             # 7. Calcular valor por unidad
             valor_unidad = costos_totales / escala
-            print(f"valor_unidad: {costos_totales:.2f} / {escala:,} = {valor_unidad:.6f}")
             
             # 8. Verificar resultado
             if not isinstance(valor_unidad, (int, float)) or valor_unidad < 0:
@@ -675,7 +503,6 @@ Cálculo:
             return 0
         
     def calcular_desperdicio_tintas(self, dados: DatosEscala, num_tintas: int, valor_material: float, es_manga: bool = False) -> Dict:
-        print(f"DEBUG (desp_tintas): Received valor_material = {valor_material}")
         # Validaciones iniciales
         if num_tintas <= 0 or valor_material <= 0:
             return {
@@ -687,12 +514,8 @@ Cálculo:
         MM_COLOR = 30000  # mm por color
         GAP_FIJO = 50  # R3 es 50 tanto para mangas como etiquetas
 
-        print("\n========== CÁLCULO DETALLADO DE DESPERDICIO DE TINTAS ==========")
-        print(f"1. Constante MM_COLOR = {MM_COLOR}")
-
         # Calcular mm totales
         mm_totales = MM_COLOR * num_tintas
-        print(f"2. MM Totales (S7) = MM_COLOR * num_tintas = {MM_COLOR} * {num_tintas} = {mm_totales}")
 
         # Usar el ancho que ya viene ajustado
         B3 = dados.ancho  # El ancho ya viene ajustado desde el cálculo anterior
@@ -700,12 +523,6 @@ Cálculo:
         # Para mangas: no hay gap entre pistas
         # Para etiquetas: gap = 0 si pistas = 1, gap = GAP_PISTAS_ETIQUETAS si pistas > 1
         C3 = 0 if (es_manga or dados.pistas == 1) else GAP_PISTAS_ETIQUETAS
-
-        print(f"3. Uso de ancho ya ajustado:")
-        print(f"   - B3 (ancho ajustado): {B3} mm")
-        print(f"   - Es manga: {es_manga}")
-        print(f"   - Pistas: {dados.pistas}")
-        print(f"   - C3 (GAP): {C3} mm")
 
         # Calcular D3 (ancho + GAP)
         D3 = B3 + C3
@@ -716,28 +533,14 @@ Cálculo:
         # Calcular Q3
         Q3 = (D3 * E3) + C3
 
-        print(f"4. Cálculo de Q3:")
-        print(f"   - B3 (ancho): {B3} mm")
-        print(f"   - D3 (ancho + GAP): {D3} mm")
-        print(f"   - E3 (pistas): {E3}")
-        print(f"   - Q3 = (D3 * pistas + C3) = ({D3} * {E3} + {C3}) = {Q3} mm")
-
         # Calcular S3
         S3 = GAP_FIJO + Q3
-        print(f"5. GAP_FIJO (R3) = {GAP_FIJO} mm")
-        print(f"6. S3 = GAP_FIJO + Q3 = {GAP_FIJO} + {Q3} = {S3} mm")
 
         # Calcular factor de conversión
-        print(f"7. Valor material (received): ${valor_material}/m²")
         factor = valor_material / 1000000
-        print(f"8. Factor de conversión (O7) = valor_material / 1000000 = {valor_material} / 1000000 = {factor:.8f}")
 
         # Calcular desperdicio de tintas
         desperdicio_tintas = mm_totales * S3 * factor
-        print(f"9. Cálculo final:")
-        print(f"   Desperdicio tintas = S7 * S3 * O7")
-        print(f"   Desperdicio tintas = MM_Totales * S3 * Factor")
-        print(f"   Desperdicio tintas = {mm_totales} * {S3} * {factor:.8f} = ${desperdicio_tintas:.2f}")
 
         # Retornar diccionario con más detalles
         return {
@@ -758,22 +561,11 @@ Cálculo:
         
     def calcular_area_etiqueta(self, datos: DatosEscala, num_tintas: int, es_manga: bool = False, q3_val: float = None, s3_val: float = None) -> Dict:
         """
-        Calcula el área de la etiqueta.
-        Fórmula:
-            - Si num_tintas == 0: área = (Q3/E3) * (Q4/E4)
-            - Si num_tintas > 0: área = (S3/E3) * (Q4/E4)
-        Args:
-            datos (DatosEscala): Parámetros de la escala
-            num_tintas (int): Número de tintas
-            es_manga (bool): True si es manga
-            q3_val (float, opcional): Q3 precalculado
-            s3_val (float, opcional): S3 precalculado
-        Returns:
-            Dict: {'area': valor, 'detalles': ...}
+        Calcula el área de la etiqueta utilizando el método base.
         """
         self._validar_inputs(datos, num_tintas, es_manga)
         try:
-            # 1. Obtener Q3/S3 usando el método base solo si no se pasa
+            # 1. Obtener Q3/S3
             if q3_val is None or s3_val is None:
                 q3_result = self.calcular_q3(datos.ancho, datos.pistas, es_manga)
                 q3 = q3_result['q3']
@@ -786,53 +578,30 @@ Cálculo:
             calculadora = self._get_calculadora_desperdicios(es_manga)
             mejor_opcion = None
             
-            # Si el usuario ha seleccionado una unidad específica, calcular las repeticiones óptimas para esa unidad
+            # (Lógica de unidad igual que antes)
             if getattr(datos, 'unidad_montaje_dientes', None) is not None:
-                # Usar el nuevo método para obtener la mejor opción para esta unidad específica
                 opcion_unidad = calculadora.obtener_mejor_opcion_para_unidad(datos.avance, datos.unidad_montaje_dientes)
                 if opcion_unidad:
                     mejor_opcion = opcion_unidad
                     
-            # Si no se ha seleccionado unidad o no se encontró una opción válida, usar la mejor opción global
             if mejor_opcion is None:
                 mejor_opcion = calculadora.obtener_mejor_opcion(datos.avance)
             if not mejor_opcion:
                 raise ValueError("No se pudo determinar la unidad de montaje")
             
-            # 4. Calcular área según fórmula basada en número de tintas
-            if num_tintas == 0:
-                area_ancho = q3/datos.pistas
-                formula_usada = 'Q3/E3 * Q4/E4'
-            else:
-                area_ancho = s3/datos.pistas
-                formula_usada = 'S3/E3 * Q4/E4'
+            print("\n=== CÁLCULO DE ÁREA DE ETIQUETA (Refactorizado) ===")
             
-            area_largo = mejor_opcion.medida_mm/mejor_opcion.repeticiones
-            area = area_ancho * area_largo
+            # 4. Llamar al método base
+            resultado = self.calcular_area_etiqueta_base(
+                q3=q3,
+                s3=s3,
+                pistas=datos.pistas,
+                medida_montaje=mejor_opcion.medida_mm,
+                repeticiones=mejor_opcion.repeticiones,
+                num_tintas=num_tintas
+            )
             
-            print(f"\n=== CÁLCULO DE ÁREA DE ETIQUETA ===")
-            print(f"Q3: {q3:.2f} mm")
-            print(f"S3: {s3:.2f} mm")
-            print(f"Pistas (E3): {datos.pistas}")
-            print(f"Medida montaje (Q4): {mejor_opcion.medida_mm:.2f} mm")
-            print(f"Repeticiones (E4): {mejor_opcion.repeticiones}")
-            print(f"Área ancho: {area_ancho:.2f} mm")
-            print(f"Área largo: {area_largo:.2f} mm")
-            print(f"Área total: {area:.2f} mm²")
-            print(f"Fórmula usada: {formula_usada}")
-            
-            return {
-                'area': area,
-                'detalles': {
-                    'q3': q3,
-                    's3': s3,
-                    'area_ancho': area_ancho,
-                    'area_largo': area_largo,
-                    'formula_usada': formula_usada,
-                    'medida_montaje': mejor_opcion.medida_mm,
-                    'repeticiones': mejor_opcion.repeticiones
-                }
-            }
+            return resultado
             
         except Exception as e:
             print(f"Error en cálculo de área de etiqueta: {str(e)}")
@@ -857,38 +626,6 @@ Cálculo:
     ) -> List[Dict]:
         """
         Calcula los costos por escala para un producto.
-        
-        Args:
-            datos (DatosEscala): Objeto con los parámetros de la escala (ancho, avance, pistas, etc.)
-            num_tintas (int): Número de tintas (0 a 7)
-            valor_plancha (float): Costo de la plancha (si es 0, se calcula)
-            valor_troquel (float): Costo del troquel (si es 0, se calcula)
-            valor_material (float): Precio por mm² del material
-            valor_acabado (float): Precio por mm² del acabado
-            es_manga (bool): True si es manga, False si es etiqueta
-            tipo_grafado_id (Optional[int]): ID del tipo de grafado
-            acabado_id (Optional[int]): ID del acabado seleccionado
-            repeticiones (Optional[int]): Número de repeticiones para el cálculo del troquel
-
-        Returns:
-            List[Dict]: Lista de resultados por cada escala, con los siguientes campos:
-                - escala: cantidad de unidades
-                - valor_unidad: costo por unidad
-                - metros: metros lineales
-                - tiempo_horas: tiempo estimado en horas
-                - montaje, mo_y_maq, tintas, papel_lam, desperdicio, etc.
-
-        Fórmulas principales:
-            - Metros: (Escala / Pistas) * ((Avance_total + Desperdicio_unidad) / 1000)
-            - Área etiqueta: (Q3/E3 * Q4/E4) o (S3/E3 * Q4/E4)
-            - Desperdicio: desperdicio_tintas + desperdicio_porcentaje
-            - Valor unidad: (costos_indirectos + costos_fijos) / escala
-
-        Ejemplo de uso:
-            >>> datos = DatosEscala(escalas=[1000, 2000], pistas=2, ancho=80, avance=120, avance_total=122.6, desperdicio=0)
-            >>> calc = CalculadoraCostosEscala()
-            >>> resultados = calc.calcular_costos_por_escala(datos, num_tintas=4, valor_plancha=0, valor_troquel=0, valor_material=1800, valor_acabado=0, es_manga=False)
-            >>> print(resultados[0]['valor_unidad'])
         """
         try:
             # Simplemente mantenemos el valor de tintas que viene desde afuera
