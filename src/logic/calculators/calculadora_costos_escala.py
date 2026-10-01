@@ -6,7 +6,7 @@ from src.logic.calculators.calculadora_base import CalculadoraBase
 from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdicio
 from src.config.constants import (
     VELOCIDAD_MAQUINA_NORMAL, MO_MONTAJE, MO_IMPRESION, MO_TROQUELADO,
-    VALOR_GR_TINTA, RENTABILIDAD_ETIQUETAS, DESPERDICIO_ETIQUETAS,
+    VALOR_GR_TINTA, RENTABILIDAD_ETIQUETAS, DESPERDICIO_ETIQUETAS, COSTO_TROQUEL_BASE_MANGAS,
     ANCHO_MAXIMO_MAQUINA, GAP_PISTAS_ETIQUETAS, MM_COLOR, GAP_FIJO,
     INCREMENTO_ANCHO_SIN_TINTAS, INCREMENTO_ANCHO_TINTAS, 
     GAP_AVANCE_ETIQUETAS, GAP_AVANCE_MANGAS, MO_SELLADO, MO_CORTE,
@@ -511,15 +511,17 @@ Cálculo:
             print(f"Error en cálculo de plancha: {str(e)}")
             return 0
 
-    def calcular_valor_troquel(self, datos: DatosEscala, es_manga: bool = False, tipo_grafado_id: Optional[int] = None, repeticiones: Optional[int] = None) -> float: # Added tipo_grafado_id and repeticiones
+    def calcular_valor_troquel(self, datos: DatosEscala, es_manga: bool = False, tipo_grafado_id: Optional[int] = None, repeticiones: Optional[int] = None, costo_troquel_base_mangas: Optional[float] = None) -> float: # Added tipo_grafado_id and repeticiones
         """
         Calcula el valor del troquel según la fórmula del código original
-        
+
         Args:
             datos: Datos de la escala
             es_manga: Si es manga o etiqueta
             tipo_grafado_id: ID del tipo de grafado
             repeticiones: Número de repeticiones (opcional, si no se proporciona se calcula automáticamente)
+            costo_troquel_base_mangas: Si es_manga=True y se proporciona, reemplaza (FACTOR_BASE + valor_calculado)
+                por este valor fijo configurable (rentabilidad/troquel editables por admin). No afecta etiquetas.
         """
         try:
             # Constantes
@@ -551,8 +553,9 @@ Cálculo:
                 # --- DEBUGGING ---
                 print(f"DEBUG (costos_escala): Received tipo_grafado_id = {repr(tipo_grafado_id)} (Type: {type(tipo_grafado_id)})")
                 # --- END DEBUGGING ---
-                # Lógica para mangas usando ID
-                factor_division = 1 if tipo_grafado_id == 4 else 2
+                # Mangas: troquel fijo sin división (solicitud Flexo 2026-09). Antes dependía
+                # del grafado (÷1 solo si tipo_grafado_id == 4, ÷2 en los demás).
+                factor_division = 1
                 print(f"ES MANGA (costos_escala) - Tipo grafado ID: {tipo_grafado_id}")
             else:
                 # Lógica para etiquetas
@@ -563,7 +566,11 @@ Cálculo:
             print(f"Factor división seleccionado (costos_escala): {factor_division}")
 
             # Calcular valor final
-            valor_final = (FACTOR_BASE + valor_calculado) / factor_division
+            if es_manga:
+                base_troquel = costo_troquel_base_mangas if costo_troquel_base_mangas is not None else COSTO_TROQUEL_BASE_MANGAS
+            else:
+                base_troquel = FACTOR_BASE + valor_calculado
+            valor_final = base_troquel / factor_division
 
             print("\n=== CÁLCULO TROQUEL (costos_escala) ===")
             print(f"Perimetro: {perimetro:,.2f} mm")

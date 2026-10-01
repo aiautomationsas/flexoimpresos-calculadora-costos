@@ -53,11 +53,16 @@ class CalculationInput:
     altura_grafado: Optional[float] = None
     num_paquetes: int = 1
     
-    # Ajustes administrativos (opcionales)
+    # Ajustes administrativos (opcionales, override manual por cotización)
     rentabilidad_ajustada: Optional[float] = None
     valor_material_ajustado: Optional[float] = None
     valor_troquel_ajustado: Optional[float] = None
     valor_plancha_ajustado: Optional[float] = None
+
+    # Configuración editable por admin para mangas termoencogibles (BD).
+    # Si no se proporciona, se usa el valor por defecto de constants.py / la fórmula anterior.
+    rentabilidad_default_mangas: Optional[float] = None
+    costo_troquel_base_mangas: Optional[float] = None
 
 
 @dataclass
@@ -238,8 +243,10 @@ class CalculationService:
         # Determinar rentabilidad
         if input_data.rentabilidad_ajustada and input_data.rentabilidad_ajustada > 0:
             rentabilidad = input_data.rentabilidad_ajustada / 100.0
+        elif es_manga:
+            rentabilidad = input_data.rentabilidad_default_mangas if input_data.rentabilidad_default_mangas is not None else RENTABILIDAD_MANGAS
         else:
-            rentabilidad = RENTABILIDAD_MANGAS if es_manga else RENTABILIDAD_ETIQUETAS
+            rentabilidad = RENTABILIDAD_ETIQUETAS
             
         # Determinar valor de material (usar ajustado si existe)
         valor_material = input_data.valor_material_ajustado if input_data.valor_material_ajustado else input_data.valor_material_base
@@ -318,11 +325,12 @@ class CalculationService:
         
         if valor_troquel is None:
             troquel_result = self.calc_lito.calcular_valor_troquel(
-                datos_escala, 
+                datos_escala,
                 mejor_opcion.repeticiones,
                 troquel_existe=datos_escala.troquel_existe,
                 tipo_grafado_id=input_data.tipo_grafado_id,
-                es_manga=input_data.es_manga
+                es_manga=input_data.es_manga,
+                costo_troquel_base_mangas=input_data.costo_troquel_base_mangas
             )
             if 'error' not in troquel_result:
                 valor_troquel = troquel_result.get('valor', 0.0)

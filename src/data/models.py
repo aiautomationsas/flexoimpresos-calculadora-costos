@@ -309,6 +309,13 @@ class PoliticasCartera:
     updated_at: Optional[datetime] = None
 
 @dataclass
+class ConfigMangasTermoencogibles:
+    """Configuración editable (rentabilidad y costo de troquel base) para fundas/mangas termoencogibles."""
+    rentabilidad: float
+    costo_troquel_base: float
+    actualizado_en: Optional[datetime] = None
+
+@dataclass
 class MaterialAdhesivo:
     """Represents the join table for material and adhesive with its value."""
     id: Optional[int] = None

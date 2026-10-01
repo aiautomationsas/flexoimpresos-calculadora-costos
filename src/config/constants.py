@@ -5,8 +5,9 @@ organizadas por categorías para facilitar su mantenimiento y actualización.
 """
 
 # Constantes generales y de producto
-RENTABILIDAD_MANGAS = 45.0  # Porcentaje de rentabilidad para mangas
+RENTABILIDAD_MANGAS = 50.0  # Porcentaje de rentabilidad para mangas (fallback si falla la consulta a config_mangas_termoencogibles)
 RENTABILIDAD_ETIQUETAS = 40.0  # Porcentaje de rentabilidad para etiquetas
+COSTO_TROQUEL_BASE_MANGAS = 825000.0  # Costo fijo del troquel de mangas, sin dividir (fallback si falla la consulta a config_mangas_termoencogibles)
 DESPERDICIO_MANGAS = 30.0  # Porcentaje de desperdicio para mangas
 DESPERDICIO_ETIQUETAS = 10.0  # Porcentaje de desperdicio para etiquetas
 

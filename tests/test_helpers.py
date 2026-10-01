@@ -9,9 +9,10 @@ import unittest
 from unittest.mock import patch, MagicMock
 from src.utils.helpers import (
     get_rentabilidad_default,
+    get_config_mangas_defaults,
     parse_numeric_input
 )
-from src.config.constants import RENTABILIDAD_ETIQUETAS, RENTABILIDAD_MANGAS
+from src.config.constants import RENTABILIDAD_ETIQUETAS, RENTABILIDAD_MANGAS, COSTO_TROQUEL_BASE_MANGAS
 
 
 class TestGetRentabilidadDefault(unittest.TestCase):
@@ -49,6 +50,58 @@ class TestGetRentabilidadDefault(unittest.TestCase):
         mock_st.session_state.get.return_value = True
         resultado = get_rentabilidad_default(None)
         self.assertEqual(resultado, RENTABILIDAD_MANGAS)
+
+    def test_manga_con_db_usa_config(self):
+        """Si es manga y se pasa db, usa la rentabilidad configurada en BD."""
+        mock_db = MagicMock()
+        mock_db.get_config_mangas.return_value = MagicMock(rentabilidad=50.0, costo_troquel_base=900000.0)
+        datos = {'es_manga': True}
+        resultado = get_rentabilidad_default(datos, db=mock_db)
+        self.assertEqual(resultado, 50.0)
+
+    def test_manga_con_db_sin_config_usa_fallback(self):
+        """Si es manga y db no tiene configuración guardada, usa el fallback de constants.py."""
+        mock_db = MagicMock()
+        mock_db.get_config_mangas.return_value = None
+        datos = {'es_manga': True}
+        resultado = get_rentabilidad_default(datos, db=mock_db)
+        self.assertEqual(resultado, RENTABILIDAD_MANGAS)
+
+    def test_etiqueta_con_db_ignora_db(self):
+        """Si no es manga, el parámetro db se ignora y no se consulta."""
+        mock_db = MagicMock()
+        datos = {'es_manga': False}
+        resultado = get_rentabilidad_default(datos, db=mock_db)
+        self.assertEqual(resultado, RENTABILIDAD_ETIQUETAS)
+        mock_db.get_config_mangas.assert_not_called()
+
+
+class TestGetConfigMangasDefaults(unittest.TestCase):
+    """Tests para get_config_mangas_defaults()."""
+
+    def test_config_existente(self):
+        """Retorna los valores configurados en BD cuando existen."""
+        mock_db = MagicMock()
+        mock_db.get_config_mangas.return_value = MagicMock(rentabilidad=50.0, costo_troquel_base=900000.0)
+        rentabilidad, costo_troquel = get_config_mangas_defaults(mock_db)
+        self.assertEqual(rentabilidad, 50.0)
+        self.assertEqual(costo_troquel, 900000.0)
+
+    def test_config_no_existe_usa_fallback(self):
+        """Retorna los valores de constants.py cuando la BD no tiene fila configurada."""
+        mock_db = MagicMock()
+        mock_db.get_config_mangas.return_value = None
+        rentabilidad, costo_troquel = get_config_mangas_defaults(mock_db)
+        self.assertEqual(rentabilidad, RENTABILIDAD_MANGAS)
+        self.assertEqual(costo_troquel, COSTO_TROQUEL_BASE_MANGAS)
+
+    def test_excepcion_usa_fallback(self):
+        """Retorna los valores de constants.py si la consulta a BD lanza una excepción."""
+        mock_db = MagicMock()
+        mock_db.get_config_mangas.side_effect = Exception("connection error")
+        rentabilidad, costo_troquel = get_config_mangas_defaults(mock_db)
+        self.assertEqual(rentabilidad, RENTABILIDAD_MANGAS)
+        self.assertEqual(costo_troquel, COSTO_TROQUEL_BASE_MANGAS)
 
 
 class TestParseNumericInput(unittest.TestCase):

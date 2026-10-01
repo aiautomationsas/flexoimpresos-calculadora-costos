@@ -9,18 +9,40 @@ from typing import Optional, Dict, Tuple
 import streamlit as st
 
 from src.config.constants import (
-    RENTABILIDAD_ETIQUETAS, RENTABILIDAD_MANGAS
+    RENTABILIDAD_ETIQUETAS, RENTABILIDAD_MANGAS, COSTO_TROQUEL_BASE_MANGAS
 )
 
 
-def get_rentabilidad_default(datos_cargados: Optional[Dict] = None) -> float:
+def get_config_mangas_defaults(db) -> Tuple[float, float]:
+    """
+    Obtiene (rentabilidad, costo_troquel_base) configurados en BD para
+    fundas/mangas termoencogibles (tabla config_mangas_termoencogibles).
+
+    Si no hay configuración guardada o falla la consulta, retorna los
+    valores de fallback de constants.py (RENTABILIDAD_MANGAS, COSTO_TROQUEL_BASE_MANGAS)
+    para no romper el cálculo de cotizaciones.
+    """
+    try:
+        config = db.get_config_mangas()
+        if config is not None:
+            return config.rentabilidad, config.costo_troquel_base
+    except Exception:
+        pass
+
+    return RENTABILIDAD_MANGAS, COSTO_TROQUEL_BASE_MANGAS
+
+
+def get_rentabilidad_default(datos_cargados: Optional[Dict] = None, db=None) -> float:
     """
     Obtiene el valor por defecto de rentabilidad según el tipo de producto.
-    
+
     Args:
         datos_cargados: Diccionario con datos cargados de cotización existente.
                         Si es None, se usa el valor de session_state.
-                        
+        db: DBManager opcional. Si se proporciona y el producto es manga, la
+            rentabilidad se lee de config_mangas_termoencogibles (editable por admin)
+            en vez del valor fijo de constants.py.
+
     Returns:
         float: Valor de rentabilidad por defecto (RENTABILIDAD_MANGAS o RENTABILIDAD_ETIQUETAS)
     """
@@ -28,8 +50,14 @@ def get_rentabilidad_default(datos_cargados: Optional[Dict] = None) -> float:
         es_manga = datos_cargados.get('es_manga', False)
     else:
         es_manga = st.session_state.get('es_manga', False)
-    
-    return RENTABILIDAD_MANGAS if es_manga else RENTABILIDAD_ETIQUETAS
+
+    if es_manga:
+        if db is not None:
+            rentabilidad, _ = get_config_mangas_defaults(db)
+            return rentabilidad
+        return RENTABILIDAD_MANGAS
+
+    return RENTABILIDAD_ETIQUETAS
 
 
 def parse_numeric_input(

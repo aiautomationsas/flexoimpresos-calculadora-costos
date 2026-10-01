@@ -5,7 +5,8 @@ from src.logic.calculators.calculadora_desperdicios import CalculadoraDesperdici
 from src.logic.calculators.calculadora_base import CalculadoraBase
 from src.config.constants import (
     GAP_PISTAS_ETIQUETAS, GAP_AVANCE_ETIQUETAS, ANCHO_MAXIMO_LITOGRAFIA,
-    VALOR_MM_PLANCHA, INCREMENTO_ANCHO_SIN_TINTAS, INCREMENTO_ANCHO_TINTAS
+    VALOR_MM_PLANCHA, INCREMENTO_ANCHO_SIN_TINTAS, INCREMENTO_ANCHO_TINTAS,
+    COSTO_TROQUEL_BASE_MANGAS
 )
 
 class DatosLitografia:
@@ -318,10 +319,11 @@ class CalculadoraLitografia(CalculadoraBase):
                 'detalles': None
             }
 
-    def calcular_valor_troquel(self, datos: DatosLitografia, repeticiones: int, 
-                            valor_mm: float = 100, troquel_existe: bool = False, 
-                            tipo_grafado_id: Optional[int] = None, 
-                            es_manga: bool = False) -> Dict:
+    def calcular_valor_troquel(self, datos: DatosLitografia, repeticiones: int,
+                            valor_mm: float = 100, troquel_existe: bool = False,
+                            tipo_grafado_id: Optional[int] = None,
+                            es_manga: bool = False,
+                            costo_troquel_base_mangas: Optional[float] = None) -> Dict:
         """
         Calcula el valor del troquel según el tipo de producto y grafado ID.
         Para mangas:
@@ -330,6 +332,10 @@ class CalculadoraLitografia(CalculadoraBase):
         Para etiquetas:
         - Si troquel_existe = True, factor_division = 2
         - Si troquel_existe = False, factor_division = 1
+
+        costo_troquel_base_mangas: si es_manga=True y se proporciona, reemplaza
+            (FACTOR_BASE + valor_calculado) por este valor fijo configurable por el admin.
+            No afecta el cálculo de etiquetas.
         """
         try:
             # Constantes
@@ -350,10 +356,9 @@ class CalculadoraLitografia(CalculadoraBase):
             
             # Determinar si es manga y el factor de división
             if es_manga:
-                # Lógica específica para mangas usando ID
-                # Si tipo_grafado_id es 4 (Horizontal Total + Vertical), factor_division = 1
-                # Para otros tipos de grafado, factor_division = 2
-                factor_division = 1 if tipo_grafado_id == 4 else 2
+                # Mangas: troquel fijo sin división (solicitud Flexo 2026-09). Antes dependía
+                # del grafado (÷1 solo si tipo_grafado_id == 4, ÷2 en los demás).
+                factor_division = 1
                 print(f"ES MANGA - Tipo grafado ID: {tipo_grafado_id}")
                 print(f"Factor división seleccionado: {factor_division}")
             else:
@@ -364,21 +369,25 @@ class CalculadoraLitografia(CalculadoraBase):
                 print(f"Factor división seleccionado: {factor_division}")
             
             # Calcular valor final
-            valor_final = (FACTOR_BASE + valor_calculado) / factor_division
-            
+            if es_manga:
+                base_troquel = costo_troquel_base_mangas if costo_troquel_base_mangas is not None else COSTO_TROQUEL_BASE_MANGAS
+            else:
+                base_troquel = FACTOR_BASE + valor_calculado
+            valor_final = base_troquel / factor_division
+
             # Asegurar que el valor final nunca sea cero
             if valor_final <= 0:
                 print("ADVERTENCIA: Valor final <= 0, usando valor mínimo")
                 valor_final = VALOR_MINIMO
-            
+
             print(f"Perimetro: {perimetro:,.2f} mm")
             print(f"Valor base: ${valor_base:,.2f}")
             print(f"Valor calculado (max con mínimo): ${valor_calculado:,.2f}")
             print(f"FACTOR_BASE: ${FACTOR_BASE:,.2f}")
-            print(f"Suma antes de división: ${(FACTOR_BASE + valor_calculado):,.2f}")
+            print(f"Base troquel usada: ${base_troquel:,.2f}")
             print(f"Factor de división aplicado: {factor_division}")
             print(f"Valor final después de división: ${valor_final:,.2f}")
-            
+
             return {
                 'valor': valor_final,
                 'detalles': {
@@ -390,7 +399,8 @@ class CalculadoraLitografia(CalculadoraBase):
                     'factor_division': factor_division,
                     'es_manga': es_manga,
                     'tipo_grafado_id': tipo_grafado_id if es_manga else None,
-                    'suma_antes_division': FACTOR_BASE + valor_calculado,
+                    'costo_troquel_base_mangas': costo_troquel_base_mangas if es_manga else None,
+                    'suma_antes_division': base_troquel,
                     'valor_final': valor_final
                 }
             }

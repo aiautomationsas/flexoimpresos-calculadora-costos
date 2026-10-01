@@ -261,7 +261,12 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             valor_plancha_a_pasar = st.session_state.get('precio_planchas', 0.0)
             logger.debug("ADMIN: Usando valor TOTAL de planchas ajustado: %s", valor_plancha_a_pasar)
 
-        rentabilidad = RENTABILIDAD_MANGAS if es_manga else RENTABILIDAD_ETIQUETAS
+        if es_manga:
+            from src.utils.helpers import get_config_mangas_defaults
+            rentabilidad, costo_troquel_base_mangas = get_config_mangas_defaults(st.session_state.db)
+        else:
+            rentabilidad = RENTABILIDAD_ETIQUETAS
+            costo_troquel_base_mangas = None
         rentabilidad_ajustada = st.session_state.get('rentabilidad_ajustada')
         if rentabilidad_ajustada is not None and rentabilidad_ajustada > 0:
             rentabilidad = rentabilidad_ajustada / 100.0
@@ -400,11 +405,12 @@ def handle_calculation(form_data: Dict[str, Any], cliente_obj: Cliente) -> Optio
             # Siempre calcular el valor del troquel, incluso si el usuario eligió una unidad específica
             # Esto asegura que tengamos un valor para el informe técnico
             troquel_result = calc_lito.calcular_valor_troquel(
-                datos_escala, 
+                datos_escala,
                 mejor_opcion.repeticiones,
                 troquel_existe=datos_escala.troquel_existe,
                 tipo_grafado_id=form_data.get('tipo_grafado_id'),
-                es_manga=es_manga
+                es_manga=es_manga,
+                costo_troquel_base_mangas=costo_troquel_base_mangas
             )
             if 'error' in troquel_result:
                  st.warning(f"Advertencia: No se pudo calcular el valor del troquel por defecto: {troquel_result['error']}")
@@ -721,7 +727,7 @@ def _mostrar_ajustes_admin(datos_cargados: Optional[Dict] = None):
         ajustar_rentabilidad = st.checkbox("Ajustar Rentabilidad", key='ajustar_rentabilidad')
         
         if ajustar_rentabilidad:
-            valor_defecto = get_rentabilidad_default(datos_cargados)
+            valor_defecto = get_rentabilidad_default(datos_cargados, db=st.session_state.db)
             valor_inicial = str(st.session_state.get('rentabilidad_ajustada', valor_defecto))
             
             rentabilidad_text = st.text_input(

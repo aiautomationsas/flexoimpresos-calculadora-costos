@@ -3,6 +3,7 @@ import pandas as pd
 import traceback
 import time
 from src.utils.session_manager import SessionManager
+from src.ui.manage_config_mangas_view import show_manage_config_mangas
 
 def show_manage_values():
     """Vista para administradores que permite modificar valores de materiales-adhesivos y acabados."""
@@ -18,7 +19,7 @@ def show_manage_values():
     db = st.session_state.db
     
     # Crear pestañas para separar materiales-adhesivos y acabados
-    tab1, tab2 = st.tabs(["Materiales-Adhesivos", "Acabados"])
+    tab1, tab2, tab3 = st.tabs(["Materiales-Adhesivos", "Acabados", "Fundas/Mangas"])
     
     # --- Pestaña de Materiales-Adhesivos ---
     with tab1:
@@ -203,4 +204,8 @@ def show_manage_values():
             
             except Exception as e:
                 st.error(f"Error cargando datos de acabados: {str(e)}")
-                traceback.print_exc() 
+                traceback.print_exc()
+
+    # --- Pestaña de Fundas/Mangas termoencogibles ---
+    with tab3:
+        show_manage_config_mangas()

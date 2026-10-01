@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from src.data.models import (
     Cotizacion, Material, Acabado, Cliente, Escala, ReferenciaCliente,
     TipoProducto, PrecioEscala, TipoGrafado, EstadoCotizacion, MotivoRechazo,
-    Adhesivo, TipoFoil, PoliticasEntrega, PoliticasCartera
+    Adhesivo, TipoFoil, PoliticasEntrega, PoliticasCartera, ConfigMangasTermoencogibles
 )
 import os
 import logging
@@ -2606,9 +2606,51 @@ class DBManager:
                 
             print("Actualización exitosa de política de cartera")
             return True
-            
+
         except Exception as e:
             print(f"Error al actualizar política de cartera: {str(e)}")
+            traceback.print_exc()
+            return False
+
+    # ==========================
+    # Config Mangas Termoencogibles
+    # ==========================
+    def get_config_mangas(self) -> Optional[ConfigMangasTermoencogibles]:
+        try:
+            response = self.supabase.table('config_mangas_termoencogibles').select('*').eq('id', 1).maybe_single().execute()
+            data = response.data if isinstance(response.data, dict) else None
+
+            if not data:
+                print("No se encontró la configuración de mangas termoencogibles")
+                return None
+
+            return ConfigMangasTermoencogibles(
+                rentabilidad=float(data.get('rentabilidad')),
+                costo_troquel_base=float(data.get('costo_troquel_base')),
+                actualizado_en=self._parse_dt(data.get('actualizado_en')),
+            )
+        except Exception as e:
+            print(f"Error al obtener config_mangas_termoencogibles: {str(e)}")
+            traceback.print_exc()
+            return None
+
+    def actualizar_config_mangas(self, rentabilidad: float, costo_troquel_base: float) -> bool:
+        try:
+            payload = {
+                'rentabilidad': rentabilidad,
+                'costo_troquel_base': costo_troquel_base,
+                'actualizado_en': datetime.now().isoformat()
+            }
+            resp = self.supabase.table('config_mangas_termoencogibles').update(payload).eq('id', 1).execute()
+
+            if not resp.data:
+                print("Error: No se recibió respuesta al actualizar config_mangas_termoencogibles")
+                return False
+
+            print("Actualización exitosa de config_mangas_termoencogibles")
+            return True
+        except Exception as e:
+            print(f"Error al actualizar config_mangas_termoencogibles: {str(e)}")
             traceback.print_exc()
             return False
 
